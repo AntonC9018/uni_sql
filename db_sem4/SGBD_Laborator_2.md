@@ -321,3 +321,37 @@ begin
 end;
 /
 ```
+
+## Sarcinile actualizate.
+
+Am bifat sarcinile pe care le-am atins în cadrul lucrării precedente, cele nebifate rămâne să le realizez.
+
+Restul acestui document va conține punctele aceste, realizate unu câte unu. Dacă nu văd aplicații pentru una dintre metode pentru baza de date a mea, voi născoci un exemplu funcționar pentru a demonstra că cunosc acea temă.
+
+<div class="ticks">
+
+- [x] De creat baza de date obiectuală individuală.  
+- [x] De creat tipurile.  
+- [x] De creat tabele obiectuale.  
+- [x] De creat legături între entități.  
+- [ ] Păstrate obiecte - colonițe (atribute). Adică de făcut o tabelă cu tip obiect printre alte date.  
+    - [ ] înserare;  
+    - [ ] selectare.  
+- [ ] Păstrare atribute de tip colecții:  
+    - [x] table;  
+        - [x] înserare;  
+        - [x] selectare. (am folosit selectarea în funcția `cost()`)  
+    - [ ] varray.  
+        - [ ] înserare;  
+        - [ ] selectare.  
+- [ ] De aplicate operația `BULK`.  
+- [ ] De creat o ierarhie de tipuri:  
+    - [ ] overload;  
+    - [ ] overriding;  
+    - [ ] selectare.  
+- [ ] De aplicat diferite metode de selectare a datelor:  
+    - [x] `VALUE`;  
+    - [x] `DEREF`;  
+    - [ ] `IS OF`.  
+
+</div>
