@@ -1,0 +1,60 @@
+drop type Person_Type force;
+/
+drop table Person_Mixed_Table force;
+/
+
+create type Person_Type as object(
+    first_name  varchar2(32),
+    last_name  varchar2(32)
+);
+/
+
+create table Person_Mixed_Table (
+    person Person_Type, 
+    address Address_Type,
+    telephone varchar2(32)
+);
+
+insert into Person_Mixed_Table(person, address, telephone) 
+values (
+    Person_Type('Ion', 'Guguta'),
+    Address_Type('str.Stefan', '123', 'Chisinau', 'MD'),
+    '123123123'
+);
+/
+
+declare
+    v_person Person_Type;
+    v_address Address_Type;
+    v_telephone varchar2(32);
+begin
+    v_person := Person_Type('Ion', 'Guguta');
+    v_address := Address_Type('str.Stefan', '123', 'Chisinau', 'MD');
+    v_telephone := '123123123';
+    
+    insert into Person_Mixed_Table(person, address, telephone) 
+    values (v_person, v_address, v_telephone);
+end;
+/
+
+
+
+/* QUERIES. RUN SEPARATELY */
+
+select t.person.last_name
+    from Person_Mixed_Table t
+    where t.person.first_name = 'Ion';
+
+
+declare 
+    v_person Person_Type;
+begin
+    select t.person
+        into v_person
+        from Person_Mixed_Table t
+        where t.person.first_name = 'Ion' 
+        -- luam doar o persoana
+        and rownum <= 1;
+
+    dbms_output.put_line(v_person.last_name);
+end;
