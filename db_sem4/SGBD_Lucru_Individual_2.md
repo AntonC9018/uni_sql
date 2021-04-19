@@ -24,12 +24,12 @@ Am studiat conceptele de **user, profile, role și privilege** și diferențele 
 1. **Privilege** (privilegiu) este un drept la o acțiune specifică (de exemplu, interogarea unui tabel specific);
 2. **Role** (rol) este un set de privilegii numit (de exemplu, setul de reguli pentru client, adică interogarea tabelelor specifice etc. ar fi numit `rol_client`).
 3. **User** (utilizator) este entitatea ce unește datele de autentificare a unui utilizator specific și setul corespunzător de reguli.
-4. **Profile** (profil) specifică cantitatea de resurse alocate utilizatorului.
+4. **Profile** (profil) specifică cantitatea de resurse alocate unui utilizator.
 
 Deci, în exemplul nostru vom avea:
 1. *Privilegiile* de acces la tabele cu tarife și cu tranzacțiile;
 2. *Rolurile* pentru `client`, `notar` și `sef` distincte;
-3. 3 *utilizatori* (`client_oleg`, `notar_ion` și `sef_vitalie`);
+3. 3 *utilizatori* (`client_cucu`, `notar_ion` și `sef_vitalie`);
 4. Probabil nu voi defini profile-uri;
 5. Datorită *controlului minuțios*, vom limita acces la tabele mai precis.
 
@@ -76,9 +76,7 @@ ORA-00972: identifier is too long
 
 Acum, putem porni codul. Ne asigurăm că tabelele de fapt s-au creat.
 
-![clients query result](image/lucru_individual_clienti_select.png)
-
-S-au mai creat tabelele pentru tranzacții și promoții, însă ele sunt obiectuale și nu arată clar ca acest tabel.
+![clients query result](image/lucru_individual_clienti_select.png)4
 
 
 ## Rolurile
@@ -90,9 +88,9 @@ Rolurile vor fi următoarele:
 
 Cum a fost menționat, limitarea înregistrărilor particulare din tabel se va realiza prin control minuțios. O vom realiza într-o secțiune aparte.
 
-*Clientul* va avea posibilitate de a privi orice informație despre tarife și promoții, va avea posibilitate de a privi informația despre sine din tabelul de clienți și va putea accesa tranzacțiile proprie din tabela de tranzacții.
+*Clientul* va avea posibilitatea de a privi orice informație despre tarife și promoții, va avea posibilitatea de a privi informația despre sine din tabelul de clienți și va putea accesa tranzacțiile proprie din tabela de tranzacții.
 
-Nu sunt sigur dacă dereferirea unei referințe la un element dintr-un alt tabel necesită privilegiile de select la acel tabel, însă logic da, deoarece ref și deref în esența pur și simplu ascund id-urile și join-urile pe celelalt tabel.
+Nu sunt sigur dacă dereferirea unei referințe la un element dintr-un alt tabel necesită privilegiile de select la acel tabel, însă logic da, deoarece ref și deref în esența pur și simplu ascund id-urile și join-urile pe celălalt tabel.
 
 ```sql
 create role client_role;
@@ -137,8 +135,214 @@ grant select, update, delete, insert on BIROU.transaction_table to sef_role;
 /
 ```
 
-## Control minuțios
-
-
 
 ## Utilizatorii
+
+Vom crea utilizatorii `client_cucu`, `notar_ion` și `sef_vitalie`.
+
+```sql
+SQL> create user client_cucu identified by admin;    
+User created.                                        
+                                                     
+SQL> create user notar_ion identified by admin;      
+User created.                                        
+                                                     
+SQL> create user sef_vitalie identified by admin;    
+User created.                                        
+```
+
+Am dat șefului și un tablespace cu o cuotă de 100M:
+
+```sql
+SQL> alter user sef_vitalie default tablespace example quota 100M on example;
+User altered.
+```
+
+Acum distribuim rolurile:
+```sql
+SQL> grant client_role to client_cucu;  
+Grant succeeded.                        
+                                        
+SQL> grant notar_role to notar_ion;     
+Grant succeeded.                        
+                                        
+SQL> grant sef_role to sef_vitalie;     
+Grant succeeded.                        
+```
+
+Le dăm și posibilitatea de a loga:
+```sql
+SQL> grant create session to client_cucu;
+Grant succeeded.
+
+SQL> grant create session to notar_ion;
+Grant succeeded.
+
+SQL> grant create session to sef_vitalie;
+Grant succeeded.
+```
+
+
+## Contextul
+
+Ne vom loga ca `sec_admin` și vom aplica regulile băzate pe rolurile notarului și a clientului.
+
+Vom folosi contextul de aplicație pentru a stoca ce roluri are persoana logată.
+Aceste date nu există by default pe contextul aplicației ([sursa](https://docs.oracle.com/en/database/oracle/oracle-database/18/sqlrf/SYS_CONTEXT.html#GUID-B9934A5D-D97B-4E51-B01B-80C76A5BD086)).
+Deci trebuie să le găsim și stocăm manual. 
+
+Informația despre roluri poate fi găsită în tabelul `USER_ROLE_PRIVS` ([sursa](https://stackoverflow.com/questions/15066408/how-to-find-the-privileges-and-roles-granted-to-a-user-in-oracle)). Deci pentru a stoca această informație vom crea un trigger pe login care va lua informația respectivă din baza de date și o va pune în context.
+
+Deci la început se creează o funcție folosită la pregătirea contextului. Important: valorile rolurilor trebuie fi scrise cu litere majuscule! `USER_ROLE_PRIVS` nu a lucrat pentru mine, nu știu de ce anume. Însă putem utiliza `DBA_ROLE_PRIVS` specificând și numele utilizatorului.
+
+```sql
+create or replace package User_Roles_Context_Package
+    is 
+    procedure set_user_role;
+end;
+/
+create or replace package body User_Roles_Context_Package 
+    is
+    procedure set_user_role
+        is
+            user_role varchar2(20);
+        begin
+            select GRANTED_ROLE 
+                into user_role
+                from DBA_ROLE_PRIVS       
+                where grantee = SYS_CONTEXT('USERENV', 'SESSION_USER')
+                and GRANTED_ROLE in ('CLIENT_ROLE', 'NOTAR_ROLE', 'SEF_ROLE');
+            dbms_session.set_context('user_roles_context', 'user_role', user_role);
+        exception  
+            when no_data_found then null;
+    end;
+end;
+/
+```
+
+Acum creăm (registrăm) contextul:
+```sql
+create or replace context user_roles_context using User_Roles_Context_Package;
+/
+```
+
+Acum se creează triggerul menționat anterior:
+```sql
+create or replace trigger User_Roles_Context_Trigger after logon on database
+    begin
+        sec_admin.User_Roles_Context_Package.set_user_role;
+    end;
+/
+```
+
+Verificăm, dacă lucrează. Ne logăm ca `client_cucu` și ne uităm dacă valoarea rolului pe context este corectă:
+```sql
+select SYS_CONTEXT('user_roles_context', 'user_role') r from dual;
+```
+
+Exemplul afișează valoarea corectă de `client_role`.
+
+
+## Control minuțios
+
+Vom defini o politică de securitate pentru clienți:
+1. El poate vedea numai informația despre el din tabelul de clienți;
+2. Tabelul de tranzacții ar putea fi accesat numai pentru tranzacțiile acestui client.
+
+Deci, ne logăm ca `sec_admin`. Descriem o funcție ce reprezintă politica de securitate, returnând predicatul de filtrare. Evident, această funcție va lucra corect numai dacă username-ul utilizatorului este același ca și `first_name`, specificat în tabela:
+
+```sql
+create or replace function auth_clients( 
+    schema_var in varchar2,
+    table_var  in varchar2
+)
+    return varchar2
+    is
+        v_role varchar2(20);
+    begin
+
+        v_role := SYS_CONTEXT('user_roles_context', 'user_role');
+
+        if (v_role = 'CLIENT_ROLE') then
+            return 'UPPER(FIRST_NAME) = ''' || SYS_CONTEXT('USERENV', 'SESSION_USER') || '''';
+        end if;
+
+        return '1=1';
+
+    end auth_clients;
+/
+```
+
+După ce creăm politica:
+```sql
+begin
+    dbms_rls.add_policy(
+        object_schema   => 'birou', 
+        object_name     => 'client_table', 
+        policy_name     => 'select_client_policy', 
+        function_schema => 'sec_admin',
+        policy_function => 'auth_clients', 
+        statement_types => 'select'
+    );
+end;
+/
+```
+
+La moment, tabelul nu conține nici o înregistrare, numele la care să fie `client_cucu` (avem doar `Cucu`). Deci, vom schimba `first_name` lui `Cucu` la `client_cucu`.
+
+```sql
+SQL> update birou.client_table set first_name = 'client_cucu' where first_name = 'Cucu';
+1 row updated.
+```
+
+Acum verificăm următoarea interogare, deja logar ca `client_cucu`:
+```sql
+select * from BIROU.client_table
+```
+
+Ne afișează numai informația despre clientul, numele căruia este `client_cucu`:
+
+![first_name is client_cucu](image/first_name_client_cucu.png)
+
+Acum creăm o funcție pentru tabelul de tranzacții, după ce creăm o politică și îi asociem această funcție:
+
+```sql
+create or replace function auth_transaction( 
+    schema_var in varchar2,
+    table_var  in varchar2
+)
+    return varchar2
+    is
+        v_role varchar2(20);
+    begin
+
+        v_role := SYS_CONTEXT('user_roles_context', 'user_role');
+
+        if (v_role = 'CLIENT_ROLE') then
+            return 'UPPER(DEREF(TRANSACTION_TABLE.CLIENT).FIRST_NAME) = ''' || SYS_CONTEXT('USERENV', 'SESSION_USER') || '''';
+        end if;
+
+        return '1=1';
+
+    end auth_transaction;
+/
+begin
+    dbms_rls.add_policy(
+        object_schema   => 'birou', 
+        object_name     => 'transaction_table', 
+        policy_name     => 'select_transaction_policy', 
+        function_schema => 'sec_admin',
+        policy_function => 'auth_transaction', 
+        statement_types => 'select'
+    );
+end;
+/
+```
+
+Verificăm:
+
+```sql
+select * from BIROU.transaction_table
+```
+
+![transaction_matches_client](image/transaction_matches_client.png)
