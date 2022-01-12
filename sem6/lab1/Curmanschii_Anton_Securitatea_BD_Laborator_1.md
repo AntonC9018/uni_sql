@@ -64,56 +64,56 @@ use Universitate
 go
 
 create table CurmanschiiAnton_Student(
-	id			int primary key not null,
-	nume		nvarchar(50) not null,
-	prenume		nvarchar(50) not null,
-	an_nastere	date not null,
-	an_studii	tinyint not null,
-	sex			char(1) null)
+    id			int primary key not null,
+    nume		nvarchar(50) not null,
+    prenume		nvarchar(50) not null,
+    an_nastere	date not null,
+    an_studii	tinyint not null,
+    sex			char(1) null)
 go
 
 create table CurmanschiiAnton_Facultate(
-	id			int primary key not null,
-	nume		nvarchar(50) not null)
+    id			int primary key not null,
+    nume		nvarchar(50) not null)
 go
 
 create table CurmanschiiAnton_GradStiintific(
-	id			int primary key not null,
-	nume		nvarchar(50) not null)
+    id			int primary key not null,
+    nume		nvarchar(50) not null)
 go
 
 create table CurmanschiiAnton_Profesor(
-	id					int primary key not null,
-	nume				nvarchar(50) not null,
-	prenume				nvarchar(50) not null,
-	id_grad_stiintific	int foreign key references CurmanschiiAnton_GradStiintific(id) not null)
+    id					int primary key not null,
+    nume				nvarchar(50) not null,
+    prenume				nvarchar(50) not null,
+    id_grad_stiintific	int foreign key references CurmanschiiAnton_GradStiintific(id) not null)
 go
 
 create table CurmanschiiAnton_Curs(
-	id			 int primary key not null,
-	nume		 nvarchar(50) not null,
-	id_facultate int foreign key references CurmanschiiAnton_Facultate(id) not null)
+    id			 int primary key not null,
+    nume		 nvarchar(50) not null,
+    id_facultate int foreign key references CurmanschiiAnton_Facultate(id) not null)
 go
 
 create table CurmanschiiAnton_CursProfesor(
-	id			int primary key not null,
-	id_curs     int foreign key references CurmanschiiAnton_Curs(id) not null,
-	id_profesor int foreign key references CurmanschiiAnton_Profesor(id) not null)
+    id			int primary key not null,
+    id_curs     int foreign key references CurmanschiiAnton_Curs(id) not null,
+    id_profesor int foreign key references CurmanschiiAnton_Profesor(id) not null)
 go
 
 create table CurmanschiiAnton_Examen(
-	id			int primary key not null,
-	id_curs     int foreign key references CurmanschiiAnton_Curs(id) not null,
-	id_profesor int foreign key references CurmanschiiAnton_Profesor(id) not null,
-	id_student  int foreign key references CurmanschiiAnton_Student(id) not null,
-	nota		tinyint not null)
+    id			int primary key not null,
+    id_curs     int foreign key references CurmanschiiAnton_Curs(id) not null,
+    id_profesor int foreign key references CurmanschiiAnton_Profesor(id) not null,
+    id_student  int foreign key references CurmanschiiAnton_Student(id) not null,
+    nota		tinyint not null)
 go
 
 create table CurmanschiiAnton_CursStudent(
-	id			int primary key not null,
-	id_student  int foreign key references CurmanschiiAnton_Student(id) not null,
-	id_curs     int foreign key references CurmanschiiAnton_Curs(id) not null,
-	id_profesor int foreign key references CurmanschiiAnton_Profesor(id) not null)
+    id			int primary key not null,
+    id_student  int foreign key references CurmanschiiAnton_Student(id) not null,
+    id_curs     int foreign key references CurmanschiiAnton_Curs(id) not null,
+    id_profesor int foreign key references CurmanschiiAnton_Profesor(id) not null)
 go
 ```
 
