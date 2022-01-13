@@ -93,7 +93,14 @@ check (an_studii >= 1 and an_studii <= 4)
 
 > 3\. Câmpul `nume` și `prenume` să accepte doar litere cu prima literă majusculă.
 
-Aș putea reutiliza funcționalitatea verificării, însă logica este destul de trivială, deci voi lăsa așa.
+Aș putea reutiliza funcționalitatea verificării, însă logica este destul de simplă, deci voi lăsa așa.
+
+`collate Latin1_General_CS_AI` înseamnă că șirurile se compar **C**ase-**S**ensitive, **A**ccent-**I**gnore.
+
+Într-um limbaj de programare normal ar arăta mai puțin verboz:
+```d
+return toUpper(nume[0]) == nume[0];
+```
 
 ```sql
 use Universitate
