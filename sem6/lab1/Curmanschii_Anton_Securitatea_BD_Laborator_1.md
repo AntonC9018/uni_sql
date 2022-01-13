@@ -65,12 +65,13 @@ use Universitate
 go
 
 create table CurmanschiiAnton_Student(
-    id          int primary key not null,
-    nume        nvarchar(50) not null,
-    prenume     nvarchar(50) not null,
-    an_nastere  date not null,
-    an_studii   tinyint not null,
-    sex         char(1) null)
+    id           int primary key not null,
+    nume         nvarchar(50) not null,
+    prenume      nvarchar(50) not null,
+    an_nastere   date not null,
+    an_studii    tinyint not null,
+    sex          char(1) null,
+    id_facultate int not null)
 go
 
 create table CurmanschiiAnton_Facultate(
@@ -93,7 +94,9 @@ go
 create table CurmanschiiAnton_Curs(
     id           int primary key not null,
     nume         nvarchar(50) not null,
-    id_facultate int foreign key references CurmanschiiAnton_Facultate(id) not null)
+    id_facultate int foreign key references CurmanschiiAnton_Facultate(id) not null,
+    nr_credite   tinyint not null,
+    nr_ore       tinyint not null)
 go
 
 create table CurmanschiiAnton_CursProfesor(

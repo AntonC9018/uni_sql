@@ -100,19 +100,19 @@ use Universitate
 
 alter table CurmanschiiAnton_Student
 add constraint Nume_PrimaLiteraEsteMajuscula_Student
-check (upper(left(nume, 1)) = left(nume, 1))
+check (upper(left(nume, 1)) = left(nume, 1) collate Latin1_General_CS_AI)
 
 alter table CurmanschiiAnton_Student
 add constraint Prenume_PrimaLiteraEsteMajuscula_Student
-check (upper(left(prenume, 1)) = left(prenume, 1))
+check (upper(left(prenume, 1)) = left(prenume, 1) collate Latin1_General_CS_AI)
 
 alter table CurmanschiiAnton_Profesor
 add constraint Nume_PrimaLiteraEsteMajuscula_Profesor
-check (upper(left(nume, 1)) = left(nume, 1))
+check (upper(left(nume, 1)) = left(nume, 1) collate Latin1_General_CS_AI)
 
 alter table CurmanschiiAnton_Profesor
 add constraint Prenume_PrimaLiteraEsteMajuscula_Profesor
-check (upper(left(prenume, 1)) = left(prenume, 1))
+check (upper(left(prenume, 1)) = left(prenume, 1) collate Latin1_General_CS_AI)
 ```
 
 > 4\. În câmpul `sex` se va accepta doar valoarea `m` sau `f`.
@@ -171,9 +171,6 @@ add unique (nume)
 [`create view`](https://docs.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql?view=sql-server-ver15).
 
 ```sql
-use Universitate
-go
-
 create view CursNume_ProfesorNume_StudentNume_Restanta_View
 as
 
@@ -198,7 +195,7 @@ where examen.nota <= 4
 > 10\. Creați vederea cu câmpurile: numele tuturor profesorilor și tuturor studenților de la facultatea
 > Matematică și Informatică.
 
-Am omis id_facultate la student.
+Am omis `id_facultate` la student.
 
 
 ```sql
@@ -207,11 +204,9 @@ add id_facultate int not null
 foreign key references CurmanschiiAnton_Facultate (id)
 ```
 
+Am realizat aici printr-o interogare imbricată, dar este posibil și prin `inner join`.
 
 ```sql
-use Universitate
-go
-
 create view NumeProfesor_NumeStudent_MatematicaInformatica_View
 as
 
@@ -241,8 +236,476 @@ where curs.id_facultate = (
 
 ```
 
-> 11. Creați vederea cu câmpurile: numele studentului, anul de studii, la ce facultate este student și care
-> este nota maximă de la examane.
+> 11\. Creați vederea cu câmpurile: numele studentului, anul de studii, la ce facultate este student și care
+> este nota maximă de la examene.
+
+```sql
+create view NumeStudent_AnStudii_NumeFacultate_NotaMaximaLaExamen_View
+as
+
+select student.nume as student_nume,
+       student.an_studii,
+       facultate.nume as nume_facultate,
+       max(examen.nota) as nota_maximala
+
+from CurmanschiiAnton_Student as student
+
+inner join CurmanschiiAnton_Facultate as facultate
+on facultate.id = student.id_facultate
+
+inner join CurmanschiiAnton_CursStudent as curs
+on curs.id_student = student.id
+
+inner join CurmanschiiAnton_Examen as examen
+on examen.id_curs = curs.id_curs
+    and examen.id_student = student.id
+
+group by student.nume, student.an_studii, facultate.nume
+```
 
 
-> 12. Creați vederea cu câmpurile: numele studenților care au examene la profesorul Y.
+> 12\. Creați vederea cu câmpurile: numele studenților care au examene la profesorul Y.
+
+```sql
+create view NumeStudent_ExamenLaProfesor_View
+as
+
+select student.nume as student_nume,
+       profesor.nume as profesor_nume
+
+from CurmanschiiAnton_Student as student
+
+inner join CurmanschiiAnton_Examen as examen
+on examen.id_student = student.id
+
+inner join CurmanschiiAnton_Profesor as profesor
+on examen.id_profesor = profesor.id
+```
+
+
+## Verificari
+
+```sql
+insert into CurmanschiiAnton_Facultate (id, nume)
+values (1, 'Matematica si Informatica')
+
+insert into CurmanschiiAnton_Facultate (id, nume)
+values (2, 'Drept')
+
+insert into CurmanschiiAnton_Facultate (id, nume)
+values (3, 'Psihologie')
+
+insert into CurmanschiiAnton_Student (
+    id, 
+    nume, 
+    prenume,
+	an_nastere,
+	an_studii,
+	sex,
+	id_facultate)
+values (
+	1,
+	'Frunza',
+	'Ion',
+	cast('1999-05-05' as date),
+	1,
+	'm',
+	1)
+
+insert into CurmanschiiAnton_Student (
+    id, 
+    nume, 
+    prenume,
+	an_nastere,
+	an_studii,
+	sex,
+	id_facultate)
+values (
+	2,
+	'Ion',
+	'Ionel',
+	cast('1998-06-07' as date),
+	1,
+	'm',
+	2)
+
+insert into CurmanschiiAnton_Student (
+    id, 
+    nume, 
+    prenume,
+	an_nastere,
+	an_studii,
+	sex,
+	id_facultate)
+values (
+	3,
+	'Ionica',
+	'Nica',
+	cast('1998-06-07' as date),
+	1,
+	'm',
+	3)
+
+insert into CurmanschiiAnton_Student (
+    id, 
+    nume, 
+    prenume,
+	an_nastere,
+	an_studii,
+	sex,
+	id_facultate)
+values (
+	4,
+	'Frumoasa',
+	'Magdalena',
+	cast('1998-06-09' as date),
+	1,
+	'f',
+	1)
+
+-- esueaza
+insert into CurmanschiiAnton_Student (
+	id, 
+    nume, 
+    prenume,
+	an_nastere,
+	an_studii,
+	sex,
+	id_facultate)
+values (
+	5,
+	'a', -- nu este majuscula
+	'AA',
+	cast('1998-06-09' as date),
+	1,
+	'f',
+	1)
+
+-- esueaza
+insert into CurmanschiiAnton_Student (
+	id, 
+    nume, 
+    prenume,
+	an_nastere,
+	an_studii,
+	sex,
+	id_facultate)
+values (
+	5,
+	'A',
+	'AA',
+	cast('1998-06-09' as date),
+	1,
+	'g', -- nu-i 'm' sau 'f'
+	1)
+
+-- esueaza
+insert into CurmanschiiAnton_Student (
+	id, 
+    nume, 
+    prenume,
+	an_nastere,
+	an_studii,
+	sex,
+	id_facultate)
+values (
+	5,
+	'A',
+	'AA',
+	cast('2020-06-09' as date), -- nu-i in interval
+	1,
+	'f',
+	1)
+
+-- esueaza
+insert into CurmanschiiAnton_Student (
+	id, 
+    nume, 
+    prenume,
+	an_nastere,
+	an_studii,
+	sex,
+	id_facultate)
+values (
+	5,
+	'A',
+	'AA',
+	cast('1998-06-09' as date),
+	0, -- nu-i in interval
+	'f',
+	1)
+
+insert into CurmanschiiAnton_GradStiintific (id, nume)
+values (1, 'doctor')
+
+insert into CurmanschiiAnton_GradStiintific (id, nume)
+values (2, 'academician')
+
+insert into CurmanschiiAnton_GradStiintific (id, nume)
+values (3, 'ne-doctor') -- esueaza
+
+
+insert into CurmanschiiAnton_Profesor (
+	id, 
+	nume,
+	prenume,
+	id_grad_stiintific)
+values (
+	1,
+	'Ion',
+	'Ionica',
+	1)
+
+insert into CurmanschiiAnton_Profesor (
+	id, 
+	nume,
+	prenume,
+	id_grad_stiintific)
+values (
+	2,
+	'Grigorica',
+	'Grigore',
+	2)
+
+insert into CurmanschiiAnton_Curs (
+	id,
+	nume,
+	id_facultate,
+	nr_credite,
+	nr_ore)
+values (
+	1,
+	'curs1',
+	1,
+	3,
+	200)
+
+insert into CurmanschiiAnton_Curs (
+	id,
+	nume,
+	id_facultate,
+	nr_credite,
+	nr_ore)
+values (
+	2,
+	'curs2',
+	2,
+	5,
+	100)
+
+-- esueaza
+insert into CurmanschiiAnton_Curs (
+	id,
+	nume,
+	id_facultate,
+	nr_credite,
+	nr_ore)
+values (
+	3,
+	'curs2',
+	1,
+	3,
+	10) -- pre putine ore
+
+	
+-- esueaza
+insert into CurmanschiiAnton_Curs (
+	id,
+	nume,
+	id_facultate,
+	nr_credite,
+	nr_ore)
+values (
+	3,
+	'curs2',
+	1,
+	11, -- prea multe credite
+	200)
+
+
+insert into CurmanschiiAnton_Examen (
+	id,
+	id_curs,
+	id_profesor,
+	id_student,
+	nota)
+values (
+	1,
+	1,
+	1,
+	1,
+	4)
+
+-- esueaza
+insert into CurmanschiiAnton_Examen (
+	id,
+	id_curs,
+	id_profesor,
+	id_student,
+	nota)
+values (
+	2,
+	1,
+	1,
+	1,
+	0) -- prea mica nota
+
+insert into CurmanschiiAnton_Examen (
+	id,
+	id_curs,
+	id_profesor,
+	id_student,
+	nota)
+values (
+	3,
+	1,
+	1,
+	2,
+	5)
+
+insert into CurmanschiiAnton_Examen (
+	id,
+	id_curs,
+	id_profesor,
+	id_student,
+	nota)
+values (
+	4,
+	1,
+	1,
+	3,
+	10)
+
+insert into CurmanschiiAnton_Examen (
+	id,
+	id_curs,
+	id_profesor,
+	id_student,
+	nota)
+values (
+	5,
+	2,
+	2,
+	1,
+	10)
+
+insert into CurmanschiiAnton_CursProfesor (
+	id,
+	id_curs,
+	id_profesor)
+values (
+	1,
+	1,
+	1)
+
+insert into CurmanschiiAnton_CursProfesor (
+	id,
+	id_curs,
+	id_profesor)
+values (
+	2,
+	2,
+	1)
+
+insert into CurmanschiiAnton_CursStudent (
+	id,
+	id_student,
+	id_curs,
+	id_profesor)
+values (
+	1,
+	1,
+	1,
+	1)
+
+insert into CurmanschiiAnton_CursStudent (
+	id,
+	id_student,
+	id_curs,
+	id_profesor)
+values (
+	2,
+	2,
+	1,
+	1)
+
+insert into CurmanschiiAnton_CursStudent (
+	id,
+	id_student,
+	id_curs,
+	id_profesor)
+values (
+	3,
+	1,
+	2,
+	2)
+
+insert into CurmanschiiAnton_Examen (
+	id,
+	id_curs,
+	id_profesor,
+	id_student,
+	nota)
+values (
+	2,
+	2,
+	2,
+	4,
+	9)
+
+insert into CurmanschiiAnton_CursStudent (
+	id,
+	id_curs,
+	id_profesor,
+	id_student)
+values (
+	4,
+	2,
+	1,
+	4)
+```
+
+
+
+```sql
+select  * from CursNume_ProfesorNume_StudentNume_Restanta_View
+```
+
+|   | nume_curs | nume_profesor | nume_student |
+|---|-----------|---------------|--------------|
+| 1 | curs1     | Ion           | Frunza       |
+
+
+```sql
+select * from NumeProfesor_NumeStudent_MatematicaInformatica_View
+```
+
+|   | nume     |
+|---|----------|
+| 1 | Frunza   |
+| 2 | Frumoasa |
+| 3 | Ion      |
+
+```sql
+select * from NumeStudent_AnStudii_NumeFacultate_NotaMaximaLaExamen_View
+```
+
+|   | student_nume | an_studii | nume_facultate             | nota_maximala |
+|---|--------------|-----------|----------------------------|---------------|
+| 1 | Frumoasa     | 1         | Matematica  si Informatica | 9             |
+| 2 | Frunza       | 1         | Matematica  si Informatica | 10            |
+| 3 | Ion          | 1         | Drept                      | 5             |
+
+
+```sql
+select * from NumeStudent_ExamenLaProfesor_View
+```
+
+|   | student_nume | profesor_nume |
+|---|--------------|---------------|
+| 1 | Frunza       | Ion           |
+| 2 | Frumoasa     | Grigorica     |
+| 3 | Ion          | Ion           |
+| 4 | Ionica       | Ion           |
+| 5 | Frunza       | Grigorica     |
+| 6 | Ionica       | Grigorica     |
