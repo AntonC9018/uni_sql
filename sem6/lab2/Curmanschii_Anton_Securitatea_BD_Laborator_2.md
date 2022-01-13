@@ -306,141 +306,141 @@ insert into CurmanschiiAnton_Student (
     id, 
     nume, 
     prenume,
-	an_nastere,
-	an_studii,
-	sex,
-	id_facultate)
+    an_nastere,
+    an_studii,
+    sex,
+    id_facultate)
 values (
-	1,
-	'Frunza',
-	'Ion',
-	cast('1999-05-05' as date),
-	1,
-	'm',
-	1)
+    1,
+    'Frunza',
+    'Ion',
+    cast('1999-05-05' as date),
+    1,
+    'm',
+    1)
 
 insert into CurmanschiiAnton_Student (
     id, 
     nume, 
     prenume,
-	an_nastere,
-	an_studii,
-	sex,
-	id_facultate)
+    an_nastere,
+    an_studii,
+    sex,
+    id_facultate)
 values (
-	2,
-	'Ion',
-	'Ionel',
-	cast('1998-06-07' as date),
-	1,
-	'm',
-	2)
+    2,
+    'Ion',
+    'Ionel',
+    cast('1998-06-07' as date),
+    1,
+    'm',
+    2)
 
 insert into CurmanschiiAnton_Student (
     id, 
     nume, 
     prenume,
-	an_nastere,
-	an_studii,
-	sex,
-	id_facultate)
+    an_nastere,
+    an_studii,
+    sex,
+    id_facultate)
 values (
-	3,
-	'Ionica',
-	'Nica',
-	cast('1998-06-07' as date),
-	1,
-	'm',
-	3)
+    3,
+    'Ionica',
+    'Nica',
+    cast('1998-06-07' as date),
+    1,
+    'm',
+    3)
 
 insert into CurmanschiiAnton_Student (
     id, 
     nume, 
     prenume,
-	an_nastere,
-	an_studii,
-	sex,
-	id_facultate)
+    an_nastere,
+    an_studii,
+    sex,
+    id_facultate)
 values (
-	4,
-	'Frumoasa',
-	'Magdalena',
-	cast('1998-06-09' as date),
-	1,
-	'f',
-	1)
+    4,
+    'Frumoasa',
+    'Magdalena',
+    cast('1998-06-09' as date),
+    1,
+    'f',
+    1)
 
 -- esueaza
 insert into CurmanschiiAnton_Student (
-	id, 
+    id, 
     nume, 
     prenume,
-	an_nastere,
-	an_studii,
-	sex,
-	id_facultate)
+    an_nastere,
+    an_studii,
+    sex,
+    id_facultate)
 values (
-	5,
-	'a', -- nu este majuscula
-	'AA',
-	cast('1998-06-09' as date),
-	1,
-	'f',
-	1)
+    5,
+    'a', -- nu este majuscula
+    'AA',
+    cast('1998-06-09' as date),
+    1,
+    'f',
+    1)
 
 -- esueaza
 insert into CurmanschiiAnton_Student (
-	id, 
+    id, 
     nume, 
     prenume,
-	an_nastere,
-	an_studii,
-	sex,
-	id_facultate)
+    an_nastere,
+    an_studii,
+    sex,
+    id_facultate)
 values (
-	5,
-	'A',
-	'AA',
-	cast('1998-06-09' as date),
-	1,
-	'g', -- nu-i 'm' sau 'f'
-	1)
+    5,
+    'A',
+    'AA',
+    cast('1998-06-09' as date),
+    1,
+    'g', -- nu-i 'm' sau 'f'
+    1)
 
 -- esueaza
 insert into CurmanschiiAnton_Student (
-	id, 
+    id, 
     nume, 
     prenume,
-	an_nastere,
-	an_studii,
-	sex,
-	id_facultate)
+    an_nastere,
+    an_studii,
+    sex,
+    id_facultate)
 values (
-	5,
-	'A',
-	'AA',
-	cast('2020-06-09' as date), -- nu-i in interval
-	1,
-	'f',
-	1)
+    5,
+    'A',
+    'AA',
+    cast('2020-06-09' as date), -- nu-i in interval
+    1,
+    'f',
+    1)
 
 -- esueaza
 insert into CurmanschiiAnton_Student (
-	id, 
+    id, 
     nume, 
     prenume,
-	an_nastere,
-	an_studii,
-	sex,
-	id_facultate)
+    an_nastere,
+    an_studii,
+    sex,
+    id_facultate)
 values (
-	5,
-	'A',
-	'AA',
-	cast('1998-06-09' as date),
-	0, -- nu-i in interval
-	'f',
-	1)
+    5,
+    'A',
+    'AA',
+    cast('1998-06-09' as date),
+    0, -- nu-i in interval
+    'f',
+    1)
 
 insert into CurmanschiiAnton_GradStiintific (id, nume)
 values (1, 'doctor')
@@ -453,223 +453,223 @@ values (3, 'ne-doctor') -- esueaza
 
 
 insert into CurmanschiiAnton_Profesor (
-	id, 
-	nume,
-	prenume,
-	id_grad_stiintific)
+    id, 
+    nume,
+    prenume,
+    id_grad_stiintific)
 values (
-	1,
-	'Ion',
-	'Ionica',
-	1)
+    1,
+    'Ion',
+    'Ionica',
+    1)
 
 insert into CurmanschiiAnton_Profesor (
-	id, 
-	nume,
-	prenume,
-	id_grad_stiintific)
+    id, 
+    nume,
+    prenume,
+    id_grad_stiintific)
 values (
-	2,
-	'Grigorica',
-	'Grigore',
-	2)
+    2,
+    'Grigorica',
+    'Grigore',
+    2)
 
 insert into CurmanschiiAnton_Curs (
-	id,
-	nume,
-	id_facultate,
-	nr_credite,
-	nr_ore)
+    id,
+    nume,
+    id_facultate,
+    nr_credite,
+    nr_ore)
 values (
-	1,
-	'curs1',
-	1,
-	3,
-	200)
+    1,
+    'curs1',
+    1,
+    3,
+    200)
 
 insert into CurmanschiiAnton_Curs (
-	id,
-	nume,
-	id_facultate,
-	nr_credite,
-	nr_ore)
+    id,
+    nume,
+    id_facultate,
+    nr_credite,
+    nr_ore)
 values (
-	2,
-	'curs2',
-	2,
-	5,
-	100)
+    2,
+    'curs2',
+    2,
+    5,
+    100)
 
 -- esueaza
 insert into CurmanschiiAnton_Curs (
-	id,
-	nume,
-	id_facultate,
-	nr_credite,
-	nr_ore)
+    id,
+    nume,
+    id_facultate,
+    nr_credite,
+    nr_ore)
 values (
-	3,
-	'curs2',
-	1,
-	3,
-	10) -- pre putine ore
+    3,
+    'curs2',
+    1,
+    3,
+    10) -- pre putine ore
 
-	
+    
 -- esueaza
 insert into CurmanschiiAnton_Curs (
-	id,
-	nume,
-	id_facultate,
-	nr_credite,
-	nr_ore)
+    id,
+    nume,
+    id_facultate,
+    nr_credite,
+    nr_ore)
 values (
-	3,
-	'curs2',
-	1,
-	11, -- prea multe credite
-	200)
+    3,
+    'curs2',
+    1,
+    11, -- prea multe credite
+    200)
 
 
 insert into CurmanschiiAnton_Examen (
-	id,
-	id_curs,
-	id_profesor,
-	id_student,
-	nota)
+    id,
+    id_curs,
+    id_profesor,
+    id_student,
+    nota)
 values (
-	1,
-	1,
-	1,
-	1,
-	4)
+    1,
+    1,
+    1,
+    1,
+    4)
 
 -- esueaza
 insert into CurmanschiiAnton_Examen (
-	id,
-	id_curs,
-	id_profesor,
-	id_student,
-	nota)
+    id,
+    id_curs,
+    id_profesor,
+    id_student,
+    nota)
 values (
-	2,
-	1,
-	1,
-	1,
-	0) -- prea mica nota
+    2,
+    1,
+    1,
+    1,
+    0) -- prea mica nota
 
 insert into CurmanschiiAnton_Examen (
-	id,
-	id_curs,
-	id_profesor,
-	id_student,
-	nota)
+    id,
+    id_curs,
+    id_profesor,
+    id_student,
+    nota)
 values (
-	3,
-	1,
-	1,
-	2,
-	5)
+    3,
+    1,
+    1,
+    2,
+    5)
 
 insert into CurmanschiiAnton_Examen (
-	id,
-	id_curs,
-	id_profesor,
-	id_student,
-	nota)
+    id,
+    id_curs,
+    id_profesor,
+    id_student,
+    nota)
 values (
-	4,
-	1,
-	1,
-	3,
-	10)
+    4,
+    1,
+    1,
+    3,
+    10)
 
 insert into CurmanschiiAnton_Examen (
-	id,
-	id_curs,
-	id_profesor,
-	id_student,
-	nota)
+    id,
+    id_curs,
+    id_profesor,
+    id_student,
+    nota)
 values (
-	5,
-	2,
-	2,
-	1,
-	10)
+    5,
+    2,
+    2,
+    1,
+    10)
 
 insert into CurmanschiiAnton_CursProfesor (
-	id,
-	id_curs,
-	id_profesor)
+    id,
+    id_curs,
+    id_profesor)
 values (
-	1,
-	1,
-	1)
+    1,
+    1,
+    1)
 
 insert into CurmanschiiAnton_CursProfesor (
-	id,
-	id_curs,
-	id_profesor)
+    id,
+    id_curs,
+    id_profesor)
 values (
-	2,
-	2,
-	1)
+    2,
+    2,
+    1)
 
 insert into CurmanschiiAnton_CursStudent (
-	id,
-	id_student,
-	id_curs,
-	id_profesor)
+    id,
+    id_student,
+    id_curs,
+    id_profesor)
 values (
-	1,
-	1,
-	1,
-	1)
+    1,
+    1,
+    1,
+    1)
 
 insert into CurmanschiiAnton_CursStudent (
-	id,
-	id_student,
-	id_curs,
-	id_profesor)
+    id,
+    id_student,
+    id_curs,
+    id_profesor)
 values (
-	2,
-	2,
-	1,
-	1)
+    2,
+    2,
+    1,
+    1)
 
 insert into CurmanschiiAnton_CursStudent (
-	id,
-	id_student,
-	id_curs,
-	id_profesor)
+    id,
+    id_student,
+    id_curs,
+    id_profesor)
 values (
-	3,
-	1,
-	2,
-	2)
+    3,
+    1,
+    2,
+    2)
 
 insert into CurmanschiiAnton_Examen (
-	id,
-	id_curs,
-	id_profesor,
-	id_student,
-	nota)
+    id,
+    id_curs,
+    id_profesor,
+    id_student,
+    nota)
 values (
-	2,
-	2,
-	2,
-	4,
-	9)
+    2,
+    2,
+    2,
+    4,
+    9)
 
 insert into CurmanschiiAnton_CursStudent (
-	id,
-	id_curs,
-	id_profesor,
-	id_student)
+    id,
+    id_curs,
+    id_profesor,
+    id_student)
 values (
-	4,
-	2,
-	1,
-	4)
+    4,
+    2,
+    1,
+    4)
 ```
 
 
