@@ -169,7 +169,118 @@ add unique (nume)
 > 8\. Să se seteze restricții prin referință pentru înregistrările tabelului `X_Student` și `X_Profesor`, când se va 
 > șterge o înregistrare din tabelul `X_Student` sau `X_Profesor` se vor șterge și înregistrările referențiate.
 
-???
+
+La început trebuie să șterg constrângere foreign key existentă.
+Pentru aceasta, voi găsi numele ei în tabloul de sistem:
+
+```sql
+use Universitate
+select name from sys.objects
+where type_desc = 'FOREIGN_KEY_CONSTRAINT' 
+    and object_name(parent_object_id) = 'CurmanschiiAnton_CursProfesor'
+```
+
+| name                           |
+|--------------------------------|
+| FK__Curmansch__id_cu__440B1D61 |
+| FK__Curmansch__id_pr__44FF419A |
+
+```sql
+alter table CurmanschiiAnton_CursProfesor
+drop constraint FK__Curmansch__id_pr__44FF419A
+```
+
+Acum adaugăm o constrângere deja cu [`on delete cascade`](https://www.sqlshack.com/delete-cascade-and-update-cascade-in-sql-server-foreign-key/), pentru ca să se șteargă după ce obiectul a fost șters în tabelul inițial.
+
+
+```sql
+use Universitate
+
+alter table CurmanschiiAnton_CursProfesor
+with check add constraint FK_CursProfesor_IdProfesor
+foreign key (id_profesor)
+references CurmanschiiAnton_Profesor (id)
+on delete cascade
+```
+
+Facem același lucru cu tabelele `CurmanschiiAnton_Examen`.
+
+```sql
+use Universitate
+select name from sys.objects
+where type_desc = 'FOREIGN_KEY_CONSTRAINT' 
+    and object_name(parent_object_id) = 'CurmanschiiAnton_Examen'
+```
+
+| name                           |
+|--------------------------------|
+| FK__Curmansch__id_cu__47DBAE45 |
+| FK__Curmansch__id_pr__48CFD27E |
+| FK__Curmansch__id_st__49C3F6B7 |
+
+```sql
+alter table CurmanschiiAnton_Examen
+drop constraint FK__Curmansch__id_pr__48CFD27E
+
+alter table CurmanschiiAnton_Examen
+drop constraint FK__Curmansch__id_st__49C3F6B7
+```
+
+```sql
+use Universitate
+
+alter table CurmanschiiAnton_Examen
+with check add constraint FK_Examen_IdProfesor
+foreign key (id_profesor)
+references CurmanschiiAnton_Profesor (id)
+on delete cascade
+
+alter table CurmanschiiAnton_Examen
+with check add constraint FK_Examen_IdStudent
+foreign key (id_student)
+references CurmanschiiAnton_Student (id)
+on delete cascade
+```
+
+Și cu `CurmanschiiAnton_CursStudent`
+
+```sql
+use Universitate
+select name from sys.objects
+where type_desc = 'FOREIGN_KEY_CONSTRAINT' 
+    and object_name(parent_object_id) = 'CurmanschiiAnton_CursStudent'
+```
+
+| name                           |
+|--------------------------------|
+| FK__Curmansch__id_st__60A75C0F |
+| FK__Curmansch__id_cu__619B8048 |
+| FK__Curmansch__id_pr__628FA481 |
+
+
+```sql
+alter table CurmanschiiAnton_CursStudent
+drop constraint FK__Curmansch__id_pr__628FA481
+
+alter table CurmanschiiAnton_CursStudent
+drop constraint FK__Curmansch__id_st__60A75C0F
+```
+
+```sql
+use Universitate
+
+alter table CurmanschiiAnton_CursStudent
+with check add constraint FK_CursStudent_IdProfesor
+foreign key (id_profesor)
+references CurmanschiiAnton_Profesor (id)
+on delete cascade
+
+alter table CurmanschiiAnton_CursStudent
+with check add constraint FK_CursStudent_IdStudent
+foreign key (id_student)
+references CurmanschiiAnton_Student (id)
+on delete cascade
+```
 
 
 > 9\. Creați vederea cu câmpurile: denumirea cursului, numele profesorului care a predat cursul și 
@@ -716,3 +827,77 @@ select * from NumeStudent_ExamenLaProfesor_View
 | 4 | Ionica       | Ion           |
 | 5 | Frunza       | Grigorica     |
 | 6 | Ionica       | Grigorica     |
+
+
+### Verificarea ștergerii datorită integrității referențiale
+
+
+```sql
+select * from CurmanschiiAnton_CursStudent
+where id_student = 1
+go
+
+select * from CurmanschiiAnton_Examen
+where id_student = 1
+```
+
+| id | id_student | id_curs | id_profesor |
+|----|------------|---------|-------------|
+| 1  | 1          | 1       | 1           |
+| 3  | 1          | 2       | 2           |
+
+| id | id_curs | id_profesor | id_student | nota |
+|----|---------|-------------|------------|------|
+| 1  | 1       | 1           | 1          | 4    |
+| 5  | 2       | 2           | 1          | 10   |
+
+```sql
+delete from CurmanschiiAnton_Student
+where id = 1
+go
+
+select * from CurmanschiiAnton_CursStudent
+where id_student = 1
+go
+
+select * from CurmanschiiAnton_Examen
+where id_student = 1
+```
+
+Dau rezultate nule.
+
+
+```sql
+select count(*) from CurmanschiiAnton_CursStudent
+where id_profesor = 1
+go
+
+select count(*) from CurmanschiiAnton_Examen
+where id_profesor = 1
+go
+
+select count(*) from CurmanschiiAnton_CursProfesor
+where id_profesor = 1
+go
+
+-- dau 2, 2, 2
+
+delete from CurmanschiiAnton_Profesor
+where id = 1
+go
+
+
+select count(*) from CurmanschiiAnton_CursStudent
+where id_profesor = 1
+go
+
+select count(*) from CurmanschiiAnton_Examen
+where id_profesor = 1
+go
+
+select count(*) from CurmanschiiAnton_CursProfesor
+where id_profesor = 1
+go
+
+-- dau 0, 0, 0
+```
