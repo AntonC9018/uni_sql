@@ -171,11 +171,12 @@ add unique (nume)
 
 
 La început trebuie să șterg constrângere foreign key existentă.
-Pentru aceasta, voi găsi numele ei în tabloul de sistem:
+Pentru aceasta, voi găsi numele ei în tabloul de sistem `sys.objects`:
 
 ```sql
 use Universitate
-select name from sys.objects
+select name 
+from sys.objects
 where type_desc = 'FOREIGN_KEY_CONSTRAINT' 
     and object_name(parent_object_id) = 'CurmanschiiAnton_CursProfesor'
 ```
@@ -207,7 +208,8 @@ Facem același lucru cu tabelele `CurmanschiiAnton_Examen`.
 
 ```sql
 use Universitate
-select name from sys.objects
+select name
+from sys.objects
 where type_desc = 'FOREIGN_KEY_CONSTRAINT' 
     and object_name(parent_object_id) = 'CurmanschiiAnton_Examen'
 ```
@@ -246,7 +248,8 @@ on delete cascade
 
 ```sql
 use Universitate
-select name from sys.objects
+select name
+from sys.objects
 where type_desc = 'FOREIGN_KEY_CONSTRAINT' 
     and object_name(parent_object_id) = 'CurmanschiiAnton_CursStudent'
 ```
