@@ -178,7 +178,6 @@ go
 select name from sys.sql_logins
 ```
 
-
 |   | name                                  |
 |---|---------------------------------------|
 | 1 | sa                                    |
@@ -189,6 +188,35 @@ select name from sys.sql_logins
 | 6 | CurmanschiiAnton_id3                  |
 | 7 | CurmanschiiAnton_id4                  |
 
+Putem încă folosi procedurile stocate `sp_helplogins`, dar atunci nu putem face fitrarea.
+
+```sql
+exec sp_helplogins
+```
+
+| LoginName                               | SID                                                                | DefDBName    | DefLangName | AUser | ARemote |
+|-----------------------------------------|--------------------------------------------------------------------|--------------|-------------|-------|---------|
+| ##MS_AgentSigningCertificate##          | 0x0106000000000009010000004C1967C27FEB2EAD332894C5A0779EAE202847C8 | master       | us_english  | yes   | no      |
+| ##MS_PolicyEventProcessingLogin##       | 0x5681CCE7A1F1FF41B2F95CED7D792E70                                 | master       | us_english  | yes   | no      |
+| ##MS_PolicySigningCertificate##         | 0x010600000000000901000000BB1B6130E13E5B67B7BD49CE40730A5B67188088 | master       | NULL        | NO    | no      |
+| ##MS_PolicyTsqlExecutionLogin##         | 0x27578D8516843E4094EFA2CEED085C82                                 | master       | us_english  | yes   | no      |
+| ##MS_SmoExtendedSigningCertificate##    | 0x010600000000000901000000DCFDCE5B748D5515E793FC84E1ECCBE22A187F7A | master       | NULL        | NO    | no      |
+| ##MS_SQLAuthenticatorCertificate##      | 0x010600000000000901000000FB236D83A8DC8E7DE549C56382C1A25F85EA3704 | master       | NULL        | NO    | no      |
+| ##MS_SQLReplicationSigningCertificate## | 0x010600000000000901000000ED1B6318A0592D96CE6D143A9184BE0F758287BE | master       | NULL        | NO    | no      |
+| ##MS_SQLResourceSigningCertificate##    | 0x0106000000000009010000001E501960278B270FD34191426BF0193FC0B4E786 | master       | NULL        | NO    | no      |
+| aaa                                     | 0x4AEB11BB9B2AA54C9A07D8105B93CEDE                                 | master       | us_english  | yes   | no      |
+| CurmanschiiAnton_id1                    | 0xB5511D782945634FADE17474867D7F79                                 | Universitate | us_english  | yes   | no      |
+| CurmanschiiAnton_id2                    | 0x69DB3E99BC9BEA4E9A3AD2201C7FEA61                                 | Universitate | us_english  | yes   | no      |
+| CurmanschiiAnton_id3                    | 0xCD451244DD5CFA4A9C29F929774A97B9                                 | Universitate | us_english  | yes   | no      |
+| CurmanschiiAnton_id4                    | 0x6DDACAAAC439274EA71A77137868134C                                 | Universitate | us_english  | yes   | no      |
+| DESKTOP-SSIOI5J\Anton                   | 0x010500000000000515000000170D6EFED5C5089BDF7A4585EA030000         | master       | us_english  | yes   | no      |
+| NT AUTHORITY\SYSTEM                     | 0x010100000000000512000000                                         | master       | us_english  | NO    | no      |
+| NT Service\MSSQLSERVER                  | 0x010600000000000550000000E20F4FE7B15874E48E19026478C2DC9AC307B83E | master       | us_english  | NO    | no      |
+| NT SERVICE\SQLSERVERAGENT               | 0x010600000000000550000000DCA88F14B79FD47A992A3D8943F829A726066357 | master       | us_english  | NO    | no      |
+| NT SERVICE\SQLTELEMETRY                 | 0x010600000000000550000000447A1A9EE0235381234A54AA9BD0549C4FCC0642 | master       | us_english  | NO    | no      |
+| NT SERVICE\SQLWriter                    | 0x010600000000000550000000732B9753646EF90356745CB675C3AA6CD6B4D28B | master       | us_english  | NO    | no      |
+| NT SERVICE\Winmgmt                      | 0x0106000000000005500000005A048DDFF9C7430AB450D4E7477A2172AB4170F4 | master       | us_english  | NO    | no      |
+| sa                                      | 0x01                                                               | master       | us_english  | yes   | no      |
 
 > 4\. Utilizând cei 4 identificatori, creați 4 utilizatori respectiv: `CurmanschiiAnton_bd1`, `CurmanschiiAnton_bd2`, `CurmanschiiAnton_bd3`, `CurmanschiiAnton_bd4`.
 
@@ -387,9 +415,14 @@ go
 ```sql
 use Universitate
 
-revoke insert
-on   CurmanschiiAnton_Examen
-from CurmanschiiAnton_bd4
+create role NoInsertOnExamen_Role
+
+deny insert
+on CurmanschiiAnton_Examen
+to NoInsertOnExamen_Role
+
+alter role NoInsertOnExamen_Role
+add member CurmanschiiAnton_bd4
 ```
 
 > 16\. Afișează rolurile utilizatorului `CurmanschiiAnton_bd2`.
@@ -410,6 +443,9 @@ where principals.name = 'CurmanschiiAnton_bd2'
 |---|-----------------------|
 | 1 | CurmanschiiAnton_rol1 |
 | 2 | CurmanschiiAnton_rol2 |
+
+Sau putem face aceasta prin interfața de utilizator din SSMS (`Universitate -> Security -> Users -> CurmanschiiAnton_bd2 -> Membership`).
+
 
 > 17\. Exclude rolul `CurmanschiiAnton_rol1` de la utilizatorul `CurmanschiiAnton_bd2`.
 

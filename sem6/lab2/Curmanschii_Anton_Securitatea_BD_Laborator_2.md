@@ -171,7 +171,7 @@ add unique (nume)
 
 
 La început trebuie să șterg constrângere foreign key existentă.
-Pentru aceasta, voi găsi numele ei în tabloul de sistem `sys.objects`:
+Pentru aceasta, voi găsi numele ei în tablelul de sistem `sys.objects`:
 
 ```sql
 use Universitate
