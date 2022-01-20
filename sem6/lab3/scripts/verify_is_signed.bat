@@ -1,0 +1,1 @@
+sn -vf ..\assembly\bin\%1\net461\Test.dll

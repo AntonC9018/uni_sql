@@ -3,5 +3,13 @@
     <TargetFramework>net461</TargetFramework>
     <AssemblyName>Test</AssemblyName>
     <AssemblyVersion>1.0.0</AssemblyVersion>
+    <OutputType>library</OutputType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Sign the assembly -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyKeyFileAttribute">
+      <_Parameter1>key.snk</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 </Project>

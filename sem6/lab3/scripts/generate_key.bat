@@ -1,0 +1,1 @@
+sn -k ../assembly/key.snk
