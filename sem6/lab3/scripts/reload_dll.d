@@ -17,7 +17,7 @@ struct Options
     string serverName = null;
 
     @("The relative or absolute path to the project folder.")
-    string pathToProjectDirectory= r"..\assembly";
+    string pathToProjectDirectory= `..\assembly`;
 }
 
 void main(string[] args)

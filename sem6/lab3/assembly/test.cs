@@ -5,6 +5,6 @@ public class Test
 {
     public static void Stuff()
     {
-        SqlContext.Pipe.Send("Hello world!" + Environment.NewLine);
+        SqlContext.Pipe.Send("test" + Environment.NewLine);
     }
 }
