@@ -1,7 +1,7 @@
 use master;
 go
 
-create or alter procedure [dbo].[DoAssemblyStuff](
+create or alter procedure [dbo].[CreateAssemblyWithLogin](
     @assembly_name varchar(max),
     @assembly_full_path varchar(max))
 as
@@ -52,8 +52,23 @@ end
 go
 
 
-declare @assembly_name varchar(max) = 'TestProject'
-declare @assembly_path varchar(max) = 'E:\Coding\uni_sql\sem6\lab3\assembly\bin\Debug\net461\Test.dll'
+create or alter procedure [dbo].[RefreshAssembly](
+    @assembly_name varchar(max),
+    @assembly_full_path varchar(max))
+as
+begin
+    declare @alter_assembly_command_text varchar(max) = formatmessage(
+		'alter assembly %s
+        from ''%s''', @assembly_name, @assembly_full_path)
+		
+    declare @is_debug int = 1
 
-exec DoAssemblyStuff @assembly_name, @assembly_path
+    if @is_debug = 1
+    begin
+        print @alter_assembly_command_text
+    end
+    begin
+        exec(@alter_assembly_command_text)
+    end
+end
 go
