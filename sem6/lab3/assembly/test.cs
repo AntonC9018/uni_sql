@@ -1,15 +1,15 @@
 using System;
 using Microsoft.SqlServer.Server;
-using System.Diagnostics;
 
 public class Test
 {
     public static void Stuff()
     {
-        SqlContext.Pipe.Send("test" + Environment.NewLine);
-
         if (SqlContext.TriggerContext is null)
+        {
+            SqlContext.Pipe.Send("The method has been called with a null trigger context." + Environment.NewLine);
             return;
+        }
 
         var triggerContext = SqlContext.TriggerContext;
 
