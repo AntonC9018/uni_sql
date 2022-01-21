@@ -1,6 +1,8 @@
 use Universitate
 go
 
+-- drop trigger Student_InsertUpdateDelete_Trigger
+
 if object_id(N'dbo.StudentAndProfessor_InsertUpdateDelete_AuditTable', N'U') is null
     create table StudentAndProfessor_InsertUpdateDelete_AuditTable (
         id                              int not null primary key

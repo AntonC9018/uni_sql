@@ -330,3 +330,21 @@ where type_of_action = 'U'
 
 Pot face același lucru și pentru tabela Profesor, dar sper că ideea și așa deja este clară.
 Pur și simplu aș copia codul și schimba unele denumirile câmpurilor și ale tabelelor.
+
+Este clar că sarcina a fost realizată pentru demonstrație, așa tabel sigur nu va avea valoarea practică în viață reală, dar conceptul poate fi util.
+
+Acum voi scoate trigger-ul, deoarece nu este util:
+
+```sql
+use Universitate
+go
+drop trigger Student_InsertUpdateDelete_Trigger
+```
+
+```
+Started executing query at Line 1
+	Commands completed successfully. 
+Started executing query at Line 3
+	Commands completed successfully. 
+Total execution time: 00:00:00.007
+```
