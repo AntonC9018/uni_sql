@@ -370,12 +370,12 @@ Pentru aceasta facem următoarele acțiuni:
     img[alt^="small"] { width: 300px; }
 </style>
 
-![small Modul mixt](images/security_mixed_mode.png)
+![Modul mixt](images/security_mixed_mode.png)
 
-![small Restarting the server instance](images/configuration_manager_restart_instance.png)
+![Restarting the server instance](images/configuration_manager_restart_instance.png)
 
 
-Acum ne putem loga cu un login SQL.
+Acum putem loga cu un login SQL.
 La început, ne creăm un login pentru test.
 Eu am făcut o procedură care șterge acest login dacă deja există, inchizând toate sesiunile curente (nu putem șterge pe un utilizator în timpul în care este logat).
 Ideea am luat-o din [acest răspuns](https://stackoverflow.com/a/29911657/9731532).
@@ -450,7 +450,7 @@ Astfel veți putea să-l scoateți cum un `drop trigger`, dacă vedeți că ceva
 
 Dacă deja ați închis sesiunea și nu deja puteți loga, dar vreți să scoateți triggerul, adăugați [flagul `-f`](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/database-engine-service-startup-options?view=sql-server-ver15#other-startup-options) în startup la *SQL Server Configuration Manager*, ca pe imagine:
 
-![small Where to change settings in configuration manager](images/configuration_manager_change_setting.png)
+![Where to change settings in configuration manager](images/configuration_manager_change_setting.png)
 
 Opțiunea `-f` pune serverul în "configurația minimă", ceea ce înseamnă că nici un trigger nu va fi apelat la logare și că se permite numai o singură conexiune deodată.
 Acum puteți da restart la server (right click pe *SQL Server (MSSQLSERVER)* și restart).
@@ -616,9 +616,9 @@ Acum putem verifica trigger-ul, realizând o conectare nouă în SSMS, de exempl
 La mine prima dată nu a lucrat, deoarece nu am creat un utilizator și declanșatorul nu vedea tabela de audit.
 Puteți face debugging prin print-uri, toate mesajele se duc în fișier-ul cu loguri, în cazul meu se află după locația `C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\Log\ERRORLOG`.
 
-![small Connect Object Explorer](images/ssms_connect_object_explorer.png)
+![Connect Object Explorer](images/ssms_connect_object_explorer.png)
 
-![small Log on as test_login](images/ssms_logon_as_test_login.png)
+![Log on as test_login](images/logging_in_as_test_login.png)
 
 Dacă încercați aceasta cu codul meu, aveți șanse mari să vă dea o eroare! De ce? Dacă ne uităm în loguri, observăm mesajul:
 ```
@@ -646,7 +646,7 @@ Asemănător, dacă încercați să vă conectați din nou de una sau de două o
 2022-01-23 19:25:59.77 Logon       Logon failed for login 'test_login' due to trigger execution. [CLIENT: <local machine>]
 ```
 
-Putem să examinăm tabela de audit pentru a afla despre încercări de logon.
+Putem examina tabela de audit pentru a afla despre încercări de logon.
 Tabela în cazul meu a stat pentru mai mult timp, a stocat deja câteva înregistrări:
 
 ```sql
@@ -689,7 +689,7 @@ select * from LogonMaster_AuditTable
 | 178 | <local machine> | test_login            | 0                | 2022-01-23 19:25:54.040 |
 | 179 | <local machine> | test_login            | 0                | 2022-01-23 19:25:59.777 |
 
-Putem să ștergem toate înregistrările:
+Putem șterge toate înregistrările:
 ```sql
 delete from LogonMaster_AuditTable
 ```
@@ -698,7 +698,7 @@ Peste câteva minute, încercăm din nou, observând că deja nu primim erorile 
 
 Trigger-ul creat de mine este destul de inutil, și chiar face utilizarea lui SSMS anevoioasă, de aceea îl scoatem.
 ```sql
-drop trigger  on all server LogonMasterTrigger
+drop trigger LogonMasterTrigger on all server
 ```
 
 ### 3\. Setați la nivel de BD auditul activității DDL ce presupune modificarea schemei tabelelor (adaugarea/modificare unei coloane, adaogarea/modificarea unei condiții de integritate).
