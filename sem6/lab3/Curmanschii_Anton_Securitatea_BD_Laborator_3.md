@@ -436,7 +436,7 @@ Acum creăm totul necesar pentru un trigger:
 Clar că cerințele sunt destul de arbitrare, dar vor demonstra logica mai bine.
 
 > După înțelegerea mea, încercări de conectare cu parola eșuată nu pot fi procesate de declanșatori personalizate, 
-> deoarece login-uri cu parole incorecte se eșuează înainte ca declanșatorii să fie rulate.
+> deoarece login-uri cu parole incorecte eșuează înainte ca declanșatorii să fie rulate.
 > Declanșatorii sunt rulate numai după ce a trecut validarea inițială de server.
 
 
