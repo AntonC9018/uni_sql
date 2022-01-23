@@ -1,3 +1,6 @@
+-- This login is intended to be used for testing the logon trigger.
+-- Below, I also create a login and a user to be used 
+-- as the execution context of the trigger.
 create or alter procedure ReCreateTestLogin(
     @login_name nvarchar(max))
 as
@@ -38,7 +41,7 @@ begin
 end
 go
 
--- We need a user to privide context to the trigger.
+-- We need a user to provide context to the trigger.
 -- Otherwise it cannot see or query any tables.
 create or alter procedure MaybeCreateLogonTriggerContextLogin
 as
