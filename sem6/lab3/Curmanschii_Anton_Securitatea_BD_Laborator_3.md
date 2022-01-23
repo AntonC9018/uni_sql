@@ -333,7 +333,7 @@ where type_of_action = 'U'
 Pot face același lucru și pentru tabela Profesor, dar sper că ideea și așa deja este clară.
 Pur și simplu aș copia codul și schimba unele denumirile câmpurilor și ale tabelelor.
 
-Este clar că sarcina a fost realizată pentru demonstrație, așa tabel sigur nu va avea valoarea practică în viață reală, dar conceptul poate fi util.
+Este clar că sarcina a fost realizată pentru demonstrație, așa tabelă sigur nu va avea valoarea practică în viață reală, dar conceptul poate fi util.
 
 Acum voi scoate trigger-ul, deoarece nu este util:
 
@@ -345,9 +345,9 @@ drop trigger Student_InsertUpdateDelete_Trigger
 
 ```
 Started executing query at Line 1
-	Commands completed successfully. 
+    Commands completed successfully. 
 Started executing query at Line 3
-	Commands completed successfully. 
+    Commands completed successfully. 
 Total execution time: 00:00:00.007
 ```
 
@@ -695,6 +695,11 @@ delete from LogonMaster_AuditTable
 ```
 
 Peste câteva minute, încercăm din nou, observând că deja nu primim erorile de numărul excesiv de încercări.
+
+Trigger-ul creat de mine este destul de inutil, și chiar face utilizarea lui SSMS anevoioasă, de aceea îl scoatem.
+```sql
+drop trigger  on all server LogonMasterTrigger
+```
 
 ### 3\. Setați la nivel de BD auditul activității DDL ce presupune modificarea schemei tabelelor (adaugarea/modificare unei coloane, adaogarea/modificarea unei condiții de integritate).
 ### 4\. Setați la nivel de BD auditul erorilor.
