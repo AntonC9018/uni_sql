@@ -435,9 +435,9 @@ Acum creăm totul necesar pentru un trigger:
 
 Clar că cerințele sunt destul de arbitrare, dar vor demonstra logica mai bine.
 
-> După înțelegerea mea, încercări de conectare cu parola eșuată nu pot fi procesate de declanșatori personalizate, 
-> deoarece login-uri cu parole incorecte eșuează înainte ca declanșatorii să fie rulate.
-> Declanșatorii sunt rulate numai după ce a trecut validarea inițială de server.
+> După înțelegerea mea, încercări de conectare cu parola eșuată nu pot fi procesate de declanșatoare personalizate, 
+> deoarece login-uri cu parole incorecte eșuează înainte ca declanșatoarele să fie rulate.
+> Declanșatoarele sunt rulate numai după ce a trecut validarea inițială de server.
 
 
 Crearea declanșatoarelor de logon este destul de periculoasă, deoarece dacă o eroare se întâmplă înăuntru unui din ele, 
@@ -457,11 +457,11 @@ Acum puteți da restart la server (right click pe *SQL Server (MSSQLSERVER)* și
 
 Închideți SSMS, deoarece din el nu veți putea scoate trigger-ul, deoarece el deschide mai multe conexiuni la server, de aceea trebuie să folosiți linia de comandă.
 Scrieți `sqlcmd -Q "drop trigger TRIGGER_NAME on all server"` ca să vă scoateți trigger-ul de logare.
-`sqlcmd` permite executarea comenzilor T-SQL, opțiunea `-Q` înseamnă "execute and close connection", "on all server" este necesară deoarece declanșatorii de logare sunt globale pentru întregul server.
+`sqlcmd` permite executarea comenzilor T-SQL, opțiunea `-Q` înseamnă "execute and close connection", "on all server" este necesară deoarece declanșatoarele de logare sunt globale pentru întregul server.
 
 
 Cu toate că am făcut destul de mult setup, nu suntem încă gata să creăm declanșatorul.
-Codul declanșatorilor este rulat în context-ul unui login, stocat în baza de date.
+Codul declanșatoarelor este rulat în context-ul unui login, stocat în baza de date.
 Deoarece vrem să facem audit, adică să stocăm unele date într-o tabelă personalizată, trebuie să definim acest context pentru declanșator de logon, ca el să vadă tabelul acesta.
 În codul declanșatorului eu voi accesa și tabelele de sistem și tabelele DMO, de aceea trebuie să dau utilizatorului nou și privilegiul `view server state` ca să le poată accesa.
 <!-- NOPE does not work like this, confirmed! -->
