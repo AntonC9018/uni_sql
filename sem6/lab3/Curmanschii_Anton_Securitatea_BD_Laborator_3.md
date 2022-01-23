@@ -44,7 +44,7 @@ if object_id(N'dbo.StudentAndProfessor_InsertUpdateDelete_AuditTable', N'U') is 
     go
 ```
 
-Acum creez trigger-ul pentru tabela `Student`.
+Acum creez trigger-ul pentru tabelul `Student`.
 
 ```sql
 create or alter trigger Student_InsertUpdateDelete_Trigger
@@ -90,7 +90,7 @@ Folosesc funcția `suser_name()` pentru a obține numele de login de pe care a f
 declare @login_name nvarchar(max) = suser_name();
 ```
 
-În sfârșit, se adaugă o înregistrare în tabela de audit.
+În sfârșit, se adaugă o înregistrare în tabelul de audit.
 
 ```sql
 insert into StudentAndProfessor_InsertUpdateDelete_AuditTable (
@@ -146,7 +146,7 @@ end
 go
 ```
 
-Pentru test, am implementat o procedură ce adaugă 5 înregistrări în tabela `Student`, verifică dacă s-a adăugat 5 rânduri în tabela respectivă pentru audit, după ce șterge aceste 5 înregistrări, verificând dacă s-a adăugat încă un rând în tabela de audit.
+Pentru test, am implementat o procedură ce adaugă 5 înregistrări în tabelul `Student`, verifică dacă s-a adăugat 5 rânduri în tabelul respectivă pentru audit, după ce șterge aceste 5 înregistrări, verificând dacă s-a adăugat încă un rând în tabelul de audit.
 Deoarece nu am pus autoincrement la id-ul la studenți, trebuie să fac acea șmecherie cu ciclul.
 
 ```sql
@@ -288,7 +288,7 @@ Started executing query at Line 1
 Total execution time: 00:00:00.033
 ```
 
-Putem inspecta tabela de audit pentru a ne găsi cele 6 mesaje.
+Putem inspecta tabelul de audit pentru a ne găsi cele 6 mesaje.
 
 ```sql
 select * from StudentAndProfessor_InsertUpdateDelete_AuditTable
@@ -330,7 +330,7 @@ where type_of_action = 'U'
 
 
 
-Pot face același lucru și pentru tabela Profesor, dar sper că ideea și așa deja este clară.
+Pot face același lucru și pentru tabelul Profesor, dar sper că ideea și așa deja este clară.
 Pur și simplu aș copia codul și schimba unele denumirile câmpurilor și ale tabelelor.
 
 Este clar că sarcina a fost realizată pentru demonstrație, așa tabelă sigur nu va avea valoarea practică în viață reală, dar conceptul poate fi util.
@@ -356,7 +356,7 @@ Total execution time: 00:00:00.007
 
 <!-- https://docs.microsoft.com/en-us/sql/t-sql/statements/execute-as-transact-sql?view=sql-server-ver15 -->
 
-Un login trigger este depistat când are loc o conectare pe server.
+Un logon trigger este depistat când are loc o conectare pe server.
 Conectările vin de la login-uri.
 Deci ca să putem verifica triggerul, trebuie să avem un login test de pe care să ne logăm (am putea folosi autentificare default, dar cred că un login aparte ar fi util).
 
@@ -442,7 +442,7 @@ Clar că cerințele sunt destul de arbitrare, dar vor demonstra logica mai bine.
 
 Crearea declanșatoarelor de logon este destul de periculoasă, deoarece dacă o eroare se întâmplă înăuntru unui din ele, 
 veți putea fi blocate de logare.
-De exemplu, în cazul meu un pic am greșit cu vizibilitatea tabelului, prin urmare nu puteam accesa tabela de audit dinăuntru declanșatorului meu, și nu puteam loga.
+De exemplu, în cazul meu un pic am greșit cu vizibilitatea tabelei, prin urmare nu puteam accesa tabelul de audit dinăuntru declanșatorului meu, și nu puteam loga.
 De aceea trebuie să cunoașteți ce puteți face ca să primiți accesul înapoi.
 
 Prima sugestie a mea este să țineți o conectare deschisă în scriptul unde definiți declanșatorul.
@@ -467,12 +467,12 @@ Deoarece vrem să facem audit, adică să stocăm unele date într-o tabelă per
 <!-- NOPE does not work like this, confirmed! -->
 <!-- Putem și să-i scoatem privilegiul de logare, deoarece acest login doar dă context-ul pentru declanșator, nu-i utilizat pentru conexiuni la server reale. -->
 Ca să dăm privilegiul de modificare a tabelei personalizate de audit (avem nevoie de *select* și *insert*), vom avea nevoie să creăm și un utilizator be baza acestul login.
-În alt caz, tabela nici nu va fi vizibilă în corpul declanșatorului, și el mereu ar da o eroare.
+În alt caz, tabelul nici nu va fi vizibilă în corpul declanșatorului, și el mereu ar da o eroare.
 
 Este important să țineți minte că nu puteți, după configurări implicite, să ștergeți utilizatorul creat cu `sp_adduser` simplu cu `drop user USER_NAME`, deoarece el atunci ar fi proprietarul unei scheme (este un namespace în scopul unei baze de date, după înțelegerea mea; nu le-am folosit). 
 Utilizați `sp_dropuser` în loc de aceasta.
 
-Definesc această procedură, dar încă nu o execut, deoarece încă nu am creat tabela.
+Definesc această procedură, dar încă nu o execut, deoarece încă nu am creat tabelul.
 
 ```sql
 -- We need a user to provide context to the trigger.
@@ -505,7 +505,7 @@ begin
 end
 ```
 
-Creez tabela pentru datele auditului, după ce deja putem crea context-ul:
+Creez tabelul pentru datele auditului, după ce deja putem crea context-ul:
 
 ```sql
 if object_id(N'dbo.LogonMaster_AuditTable', N'U') is null
@@ -613,7 +613,7 @@ go
 
 Acum putem verifica trigger-ul, realizând o conectare nouă în SSMS, de exemplu (însă SSMS nu-i un loc tare bun pentru aceste verificări, acuș explic de ce). 
 
-La mine prima dată nu a lucrat, deoarece nu am creat un utilizator și declanșatorul nu vedea tabela de audit.
+La mine prima dată nu a lucrat, deoarece nu am creat un utilizator și declanșatorul nu vedea tabelul de audit.
 Puteți face debugging prin print-uri, toate mesajele se duc în fișier-ul cu loguri, în cazul meu se află după locația `C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\Log\ERRORLOG`.
 
 ![Connect Object Explorer](images/ssms_connect_object_explorer.png)
@@ -646,8 +646,8 @@ Asemănător, dacă încercați să vă conectați din nou de una sau de două o
 2022-01-23 19:25:59.77 Logon       Logon failed for login 'test_login' due to trigger execution. [CLIENT: <local machine>]
 ```
 
-Putem examina tabela de audit pentru a afla despre încercări de logon.
-Tabela în cazul meu a stat pentru mai mult timp, a stocat deja câteva înregistrări:
+Putem examina tabelul de audit pentru a afla despre încercări de logon.
+Tabelul în cazul meu a stat pentru mai mult timp, a stocat deja câteva înregistrări:
 
 ```sql
 select * from LogonMaster_AuditTable
