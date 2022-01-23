@@ -64,7 +64,7 @@ begin
     -- Need a user to be able to insert into user tables.
     exec sp_adduser 'logon_trigger_context_login', 'logon_trigger_context_user';
 
-    -- Without this permission it could not modify the tables.
+    -- Without this permission it won't be able to modify the table.
     grant select, insert
     on LogonMaster_AuditTable
     to logon_trigger_context_user;
@@ -75,7 +75,7 @@ if object_id(N'dbo.LogonMaster_AuditTable', N'U') is null
         id                int not null primary key identity(1, 1),
         ip_address        nvarchar(max) not null,
         login_name        nvarchar(max) not null,
-        logon_date        date not null,
+        logon_date        datetime not null,
         is_logon_allowed  bit not null)
 go
 
@@ -94,7 +94,7 @@ begin
 
     declare @is_logon_allowed  bit           = 1;
     declare @login_name        nvarchar(max) = original_login();
-    declare @logon_date        date          = getdate();
+    declare @logon_date        datetime      = getdate();
 
     -- Always let admins log on.
     if is_srvrolemember('sysadmin', @login_name) = 0
