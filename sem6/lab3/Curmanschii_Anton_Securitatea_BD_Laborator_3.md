@@ -701,6 +701,9 @@ Trigger-ul creat de mine este destul de inutil, și chiar face utilizarea lui SS
 drop trigger LogonMasterTrigger on all server
 ```
 
-### 3\. Setați la nivel de BD auditul activității DDL ce presupune modificarea schemei tabelelor (adaugarea/modificare unei coloane, adaogarea/modificarea unei condiții de integritate).
+### 3\. Setați la nivel de BD auditul activității DDL ce presupune modificarea schemei tabelelor (adaugarea/modificare unei coloane, adaugarea/modificarea unei condiții de integritate).
+
+
+
 ### 4\. Setați la nivel de BD auditul erorilor.
 ### 5\. Setați la nivel de BD auditul modificării privilegiilor și utilizatorilor.

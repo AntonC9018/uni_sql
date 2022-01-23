@@ -19,7 +19,7 @@ public class Test
         {
             case TriggerAction.Insert:
             {
-                    // Retrieve the connection that the trigger is using.
+                // Retrieve the connection that the trigger is using.
                 using (var connection = new SqlConnection(@"context connection=true"))
                 {
                     connection.Open();

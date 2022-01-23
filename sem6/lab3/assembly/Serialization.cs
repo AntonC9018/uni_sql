@@ -2,21 +2,24 @@ using System.Collections;
 using System.Reflection;
 using System.Text;
 
-public static class GenericXmlSerialization
+
+// Does not work when loaded in an SQL Server context,
+// because it does not have permission to do reflection on private fields (why tho?)
+public static class GenericJsonSerialization
 {
     public static void Log(string s)
     {
         // SqlContext.Pipe.Send(s + Environment.NewLine);
     }
 
-    public static string SerializeXml<T>(this T obj)
+    public static string SerializeJson<T>(this T obj)
     {
         var builder = new StringBuilder();
-        SerializeXmlInternal(builder, obj, 0);
+        SerializeJsonInternal(builder, obj, 0);
         return builder.ToString();
     }
 
-    private static void SerializeXmlInternal(StringBuilder builder, object obj, int indentation)
+    private static void SerializeJsonInternal(StringBuilder builder, object obj, int indentation)
     {
         if (obj is null)
         {
@@ -90,7 +93,7 @@ public static class GenericXmlSerialization
             if (threw)
                 builder.Append("error");
             else
-                SerializeXmlInternal(builder, obj2, indentation);
+                SerializeJsonInternal(builder, obj2, indentation);
 
             if (i != fields.Length - 1)
                 builder.Append(",\n");
