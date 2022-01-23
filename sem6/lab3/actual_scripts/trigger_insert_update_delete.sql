@@ -25,6 +25,7 @@ begin
     -- https://www.mssqltips.com/sqlservertip/6091/how-to-use-rowcount-in-sql-server/
     declare @affected_row_count int = @@rowcount;
 
+    -- https://docs.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql?view=sql-server-ver15#optimizing-dml-triggers
     if @affected_row_count = 0
         return;
 

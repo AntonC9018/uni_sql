@@ -17,12 +17,14 @@ Tema: **Metode de audit a BD.**
 
 ## Răspunsurile
 
-> 1\. Setați la tabelul CurmanschiiAnton_Student și CurmanschiiAnton_Profesor auditul la modificarea datelor (Insert, Update, Delete).
+
+### 1\. Setați la tabelul CurmanschiiAnton_Student și CurmanschiiAnton_Profesor auditul la modificarea datelor (Insert, Update, Delete).
 
 Vom crea o tabelă care să țină datele, înregistrate când are loc orice interogare de tip `Insert, Update, Delete` pe tabelele CurmanschiiAnton_Student și CurmanschiiAnton_Profesor.
 În primul rând consultăm documentația pentru a afla ce proprietăți putem accesa, ce informație avem la dispoziție într-un astfel de trigger. [Link la pagina documentației](https://docs.microsoft.com/en-us/sql/relational-databases/triggers/dml-triggers?view=sql-server-ver15).
 
-<!-- https://sqlquantumleap.com/2017/08/07/sqlclr-vs-sql-server-2017-part-1-clr-strict-security/ -->
+<!-- clr triggers:
+     https://sqlquantumleap.com/2017/08/07/sqlclr-vs-sql-server-2017-part-1-clr-strict-security/ -->
 <!-- https://sqlquantumleap.com/2017/08/09/sqlclr-vs-sql-server-2017-part-2-clr-strict-security-solution-1/ -->
 
 Vom crea o tabelă care să stocheze acțiunea ce am aplicat, numele de login de pe care a fost executată acțiunea (folosind `suser_name()`), și câte coloane au fost atinse de această acțiune.
@@ -348,3 +350,95 @@ Started executing query at Line 3
 	Commands completed successfully. 
 Total execution time: 00:00:00.007
 ```
+
+
+### 2\. Setați la nivel de SQL Server auditul logon.
+
+<!-- https://docs.microsoft.com/en-us/sql/t-sql/statements/execute-as-transact-sql?view=sql-server-ver15 -->
+
+Un login trigger este depistat când are loc o conectare pe server.
+Conectările vin de la login-uri.
+Deci ca să putem verifica triggerul, trebuie să avem un login test de pe care să ne logăm (am putea folosi autentificare default, dar cred că un login aparte ar fi util).
+
+Serverul SQL implicit admite doar conectarea Windows, dar noi am vrea să ne conectăm cu un login SQL simplu.
+Pentru aceasta facem următoarele acțiuni:
+
+- Schimbăm setarea modului de login la login mixt;
+- După aceasta, restartăm serverul.
+
+<style>
+    img[alt^="small"] { width: 200px; }
+</style>
+
+![small Modul mixt](images/security_mixed_mode.png)
+
+![small Restarting the server instance](images/configuration_manager_restart_instance.png)
+
+
+Acum ne putem loga cu un login SQL.
+La început, ne creăm un login pentru test.
+Eu am făcut o procedură care șterge acest login dacă deja există, inchizând toate sesiunile curente (nu putem șterge utilizator în timpul în care este logat).
+Ideea am luat-o din [acest răspuns](https://stackoverflow.com/a/29911657/9731532).
+După aceasta se crează un login fără privilegii.
+
+> Creating a login automatically enables the new login and grants the login the server level CONNECT SQL permission.
+
+```sql
+create or alter procedure ReCreateTestLogin(
+    @login_name nvarchar(max))
+as
+begin
+    if exists(
+        select name
+        from sys.server_principals
+        where name = @login_name)
+    begin
+        declare login_connections_cursor cursor
+        for select session_id 
+            from sys.dm_exec_sessions
+            where login_name = @login_name;
+        open login_connections_cursor;
+
+        declare @session_id smallint;
+
+        fetch next 
+        from login_connections_cursor
+        into @session_id;
+
+        while @@fetch_status = 0
+        begin
+            exec('kill ' + @session_id);
+
+            fetch next 
+            from login_connections_cursor
+            into @session_id;
+        end
+
+        close login_connections_cursor;
+        deallocate login_connections_cursor;
+
+        exec sp_droplogin @login_name;
+    end
+
+    exec sp_addlogin @login_name, '1111';
+end
+```
+
+Acum creăm totul necesar pentru un trigger:
+
+- Când un login se conectează la server, vom sălva adresa IP a lui, numele de utilizator, și data de logare.
+- Dacă se loghează un admin, acceptăm imediat.
+- Dacă numele conține `hacker`, nu vom accepta conexiunea.
+- Permitem doar 3 încercări de logare (reușite sau nereușite) în 5 minute.
+- Permitem doar 3 sesiuni concomitente.
+- Încă vom sălva dacă utilizatorul a fost admis de declanșator. 
+
+Clar că cerințele sunt destul de arbitrare, dar vor demonstra logica mai bine.
+
+> După înțelegerea mea, încercări de conectare cu parola eșuată nu pot fi procesate de declanșatori personalizate, 
+> deoarece login-uri cu parole incorecte se eșuează înainte ca declanșatorii să fie rulate.
+> Declanșatorii sunt rulate numai după ce a trecut validarea inițială de server.
+
+### 3\. Setați la nivel de BD auditul activității DDL ce presupune modificarea schemei tabelelor (adaugarea/modificare unei coloane, adaogarea/modificarea unei condiții de integritate).
+### 4\. Setați la nivel de BD auditul erorilor.
+### 5\. Setați la nivel de BD auditul modificării privilegiilor și utilizatorilor.
