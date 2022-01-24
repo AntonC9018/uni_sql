@@ -855,9 +855,10 @@ Setup-ul este mai voluminos, și îl voi descrie doar pe scurt aici:
 - Am creat un proiect C# (un fișier cu configurația pentru MSBuild ca să fie ușor să setez versiunea, etc., și un fișier cu codul sursă).
 - Am creat o pereche de chei criptografice pentru semnare. Am setat setarea automată în fișierul de configurație MSBuild.
 - Am configurat serverul să admită execuția codului CLR.
-- Am creat o procedură T-SQL care să registreze assembly-ul și să creeze un login pe baza cheilor criptografice.
+- Am creat o procedură T-SQL care să creeze un login pe baza cheilor criptografice utilizate la semnarea assembly-ului.
+- Am creat o perocedură ce permite crearea unui assembly după ce ați creat acel login și acele chei criptografice.
 - Am făcut un script în D care să facă rebuild-ul proiectului și să invoce `alter assembly` pe server ca să-mi ia noul assembly.
-- Am definit câte un wrapper pentru fiecare funcție pr care am definit-o în C#.
+- Am definit câte un wrapper pentru fiecare funcție pe care am definit-o în C# (mai jos aveți un exemplu cu trigger).
 
 [Toate scripturile](https://github.com/AntonC9018/uni_sql/tree/master/sem6/lab3/scripts_for_clr), [Proiectul C#](https://github.com/AntonC9018/uni_sql/tree/master/sem6/lab3/assembly).
 
@@ -869,30 +870,161 @@ public static class Test
     public static void Stuff()
     {
         SqlContext.Pipe.Send("Hello");
-        Transaction.Current?.Rollback();
+
+        // For a test, always do this Rollback.
+        Rollback();
 
         if (SqlContext.TriggerContext is null)
         {
-            SqlContext.Pipe.Send("The method has been called with a null trigger context." + Environment.NewLine);
+            SqlContext.Pipe.Send("The method has been called with a null trigger context.");
             return;
         }
+    }
 
-        var triggerContext = SqlContext.TriggerContext;
-        SqlContext.Pipe.Send(triggerContext.EventData.ToString());
+    internal static void Rollback()
+    {
+        // https://docs.microsoft.com/en-us/sql/relational-databases/clr-integration-data-access-transactions/accessing-the-current-transaction?view=sql-server-ver15
+        using (var transactionScope = new TransactionScope(TransactionScopeOption.Required)) { }
     }
 }
 ```
 
 
-Acum definesc un trigger care să invoce această funcție.
+Acum definesc un trigger care să invoce această funcție (am omis mai multe detalii, vedeți scripturi pe github).
+
+```sql
+use Universitate
+go
+
+create or alter trigger NoCreditsChange_LogWhenNewColumnAdded_TestTable_Trigger
+on database
+for alter_table
+as
+    external name TestProject.Test.Stuff
+go
+```
 
 
+Dacă acum executăm următoarea comandă, vedem "Hello" afișat în consola, eroarea că tranzacția a fost anulată:
+
+```sql
+alter table DDLTriggers_TestSchema.TestTable
+drop column CREDITS
+```
 
 
-<!-- https://www.sqlshack.com/working-with-xml-data-in-sql-server/ -->
+Acum, folosind funcțiile pentru citirea unui document XML din C# ușor de utilizat (`System.Xml.Linq`), putem realiza acea logică descrisă mai sus, cu cicluri și verificări ale nodurilor. 
+Deoarece cicluri sunt triviale de folosit în C#, aici deja presupun minim despre structura documentului, admitând și orice număr de acțiuni în `AlterTableActionList`, și orice număr de constrângeri ori coloane, și orice număr de noduri cu numele în interiorul acelor elemente.
+Am realizat și verificarea dependentă de contextul lingvist al bazei de date, și ca să fie afișat un mesaj care să descrie eroarea.
+
+```csharp
+public static void Stuff()
+{
+    var pipe = SqlContext.Pipe;
+
+    var triggerContext = SqlContext.TriggerContext;
+    if (triggerContext is null)
+    {
+        pipe.Send("The method has been called with a null trigger context.");
+        return;
+    }
+
+    using (var reader = triggerContext.EventData.CreateReader())
+    {
+        var document = XDocument.Load(reader);
+
+        var actions = (document.FirstNode as XElement)
+            .Elements("AlterTableActionList")
+            .First()
+            .Elements();
+        
+        foreach (var action in actions)
+        {
+            var columns = action.Elements("Columns");
+
+            const string protectedColumnName = "credits";
+            if ((action.Name == "Drop" || action.Name == "Alter")
+                && columns
+                    .SelectMany(col => col.Elements("Name"))
+                    .Any(name => name.Value.Equals(
+                        protectedColumnName, StringComparison.CurrentCultureIgnoreCase)))
+            {
+                pipe.Send($"The column `{protectedColumnName}` cannot be modified.");
+                Rollback();
+            }
+        }
+    }
+}
+```
+
+Verificăm cu un drop sau alter la coloana "credits":
+
+```sql
+alter table DDLTriggers_TestSchema.TestTable
+drop column CREDITS
+
+alter table DDLTriggers_TestSchema.TestTable
+drop column CrEdItS
+
+alter table DDLTriggers_TestSchema.TestTable
+alter column credits nvarchar(10) not null
+```
+
+Toate aceste comenzi aduc la același rezultat:
+
+```
+The column `credits` cannot be modified.
+Msg 1206, Level 18, State 49, Line 1
+The Microsoft Distributed Transaction Coordinator (MS DTC) has cancelled the distributed transaction.
+```
 
 
+Acum adaug logica că trebuie să afișeze când ceva se adaugă.
 
+```csharp
+else if (action.Name.LocalName == "Create")
+{
+    var sb = new StringBuilder("Adding: ");
+    var lb = new ListBuilder(sb, ", "); 
+    var constraints = action.Elements("Constraints");
+    var names = columns
+        .Concat(constraints)
+        .SelectMany(c => c.Elements(Name))
+        .Select(a => a.Value);
+
+    foreach (var name in names)
+        lb.AppendItem(name);
+
+    sb.Append(".");
+
+    pipe.Send(sb.ToString());
+}
+```
+
+```sql
+alter table DDLTriggers_TestSchema.TestTable
+add test2 nvarchar(2) not null
+```
+
+```
+Adding: test2.
+```
+
+
+```sql
+alter table DDLTriggers_TestSchema.TestTable
+add constraint TestTable_C1 check(credits > 5),
+    constraint TestTable_C2 check(credits < 15)
+```
+
+```
+Adding: TestTable_C1, TestTable_C2.
+```
+
+
+Codul deja răspunde și la modificări de reguli de integritate (constraint).
+Doar le afișează, dar am putea face și mai multe verificări, implementând orice logică dorim. 
+Deja este ușor, deoarece avem la dispoziție un limbaj de programare real.
 
 ### 4\. Setați la nivel de BD auditul erorilor.
 ### 5\. Setați la nivel de BD auditul modificării privilegiilor și utilizatorilor.
