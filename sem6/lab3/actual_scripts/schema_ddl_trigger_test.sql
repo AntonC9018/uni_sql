@@ -3,6 +3,6 @@ go
 
 
 alter table DDLTriggers_TestSchema.TestTable
-drop column credits
+add test int not null
 
 

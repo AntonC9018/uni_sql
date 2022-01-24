@@ -1,21 +1,42 @@
 using System;
 using Microsoft.SqlServer.Server;
 using System.Transactions;
+using System.Data.SqlClient;
 
 public static class Test
 {
-    public static void Stuff()
+    [Microsoft.SqlServer.Server.SqlFunction(DataAccess = DataAccessKind.Read)]
+    public static bool Stuff()
     {
-        SqlContext.Pipe.Send("Hello");
-        Transaction.Current?.Rollback();
+        var pipe = SqlContext.Pipe;
+        pipe?.Send("Hello");
 
         if (SqlContext.TriggerContext is null)
         {
-            SqlContext.Pipe.Send("The method has been called with a null trigger context." + Environment.NewLine);
-            return;
+            pipe?.Send("The method has been called with a null trigger context." + Environment.NewLine);
+            return true;
         }
 
-        var triggerContext = SqlContext.TriggerContext;
-        SqlContext.Pipe.Send(triggerContext.EventData.ToString());
+
+        // using (var connection = CreateContextConnection())
+        // {
+        //     connection.Open();
+        //     using (var transaction = connection.BeginTransaction())
+        //     {
+        //         SqlContext.Pipe.Send("Hello 2");
+        //         transaction.Rollback();
+        //         SqlContext.Pipe.Send("Hello 3");
+        //     }
+        // }
+        
+        return false;
+        // Transaction.Current?.Rollback();
+        // var triggerContext = SqlContext.TriggerContext;
+        // SqlContext.Pipe.Send(triggerContext.EventData.ToString());
+    }
+
+    public static SqlConnection CreateContextConnection()
+    {
+        return new SqlConnection("context connection=true");
     }
 }
