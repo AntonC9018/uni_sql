@@ -5,38 +5,26 @@ using System.Data.SqlClient;
 
 public static class Test
 {
-    [Microsoft.SqlServer.Server.SqlFunction(DataAccess = DataAccessKind.Read)]
-    public static bool Stuff()
+    // [SqlTrigger()]
+    // [Microsoft.SqlServer.Server.SqlFunction(DataAccess = DataAccessKind.Read)]
+    public static void Stuff()
     {
         var pipe = SqlContext.Pipe;
-        pipe?.Send("Hello");
+        pipe.Send("Hello");
 
-        if (SqlContext.TriggerContext is null)
+        Rollback();
+
+        var triggerContext = SqlContext.TriggerContext;
+        if (triggerContext is null)
         {
-            pipe?.Send("The method has been called with a null trigger context." + Environment.NewLine);
-            return true;
+            pipe.Send("The method has been called with a null trigger context." + Environment.NewLine);
+            return;
         }
-
-
-        // using (var connection = CreateContextConnection())
-        // {
-        //     connection.Open();
-        //     using (var transaction = connection.BeginTransaction())
-        //     {
-        //         SqlContext.Pipe.Send("Hello 2");
-        //         transaction.Rollback();
-        //         SqlContext.Pipe.Send("Hello 3");
-        //     }
-        // }
-        
-        return false;
-        // Transaction.Current?.Rollback();
-        // var triggerContext = SqlContext.TriggerContext;
-        // SqlContext.Pipe.Send(triggerContext.EventData.ToString());
     }
 
-    public static SqlConnection CreateContextConnection()
+    internal static void Rollback()
     {
-        return new SqlConnection("context connection=true");
+        // https://docs.microsoft.com/en-us/sql/relational-databases/clr-integration-data-access-transactions/accessing-the-current-transaction?view=sql-server-ver15
+        using (var transactionScope = new TransactionScope(TransactionScopeOption.Required)) { }
     }
 }
