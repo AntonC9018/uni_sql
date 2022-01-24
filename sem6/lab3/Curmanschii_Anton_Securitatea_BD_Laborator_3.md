@@ -330,10 +330,10 @@ where type_of_action = 'U'
 
 
 
-Pot face același lucru și pentru tabelul Profesor, dar sper că ideea și așa deja este clară.
-Pur și simplu aș copia codul și schimba unele denumirile câmpurilor și ale tabelelor.
+Putem face același lucru și pentru tabelul Profesor, dar sper că ideea și așa deja este clară.
+Pur și simplu am copia codul și am schimba denumirile unelor câmpuri și ale unelor tabele.
 
-Este clar că sarcina a fost realizată pentru demonstrație, așa tabelă sigur nu va avea valoarea practică în viață reală, dar conceptul poate fi util.
+Este clar că sarcina a fost realizată pentru demonstrație, așa tabel sigur nu va avea valoarea practică în viață reală, dar conceptul poate fi util.
 
 Acum voi scoate trigger-ul, deoarece nu este util:
 
@@ -630,7 +630,7 @@ Dacă încercați aceasta cu codul meu, aveți șanse mari să vă dea o eroare!
 ```
 
 Deci SSMS uneori deschide mai multe decât 3 conexiuni concomitente, încercând să acceseze serverul.
-(Probabil deschide câte o conexiune nouă pentru fiecare mapa din object explorer, fiecare într-un nou thread?)
+(Probabil deschide câte o conexiune nouă pentru fiecare mapă din object explorer, fiecare într-un nou thread?)
 
 Asemănător, dacă încercați să vă conectați din nou de una sau de două ori, veți primi a doua eroare, că numărul de încercări era mai mare ca 15:
 ```
@@ -1038,4 +1038,7 @@ Doar le afișează, dar am putea face și mai multe verificări, implementând o
 Deja este ușor, deoarece avem la dispoziție un limbaj de programare real.
 
 ### 4\. Setați la nivel de BD auditul erorilor.
+
+<!-- https://docs.microsoft.com/en-us/sql/relational-databases/extended-events/quick-start-extended-events-in-sql-server?view=sql-server-2017 -->
+
 ### 5\. Setați la nivel de BD auditul modificării privilegiilor și utilizatorilor.
