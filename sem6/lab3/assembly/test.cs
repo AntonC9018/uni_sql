@@ -46,7 +46,7 @@ public static class Test
                             protectedColumnName, StringComparison.CurrentCultureIgnoreCase)))
                     {
                         pipe.Send($"The column `{protectedColumnName}` cannot be modified.");
-                        
+
                         if (!hasRolledBack)
                         {
                             Rollback();
@@ -67,9 +67,11 @@ public static class Test
                     foreach (var name in names)
                         lb.AppendItem(name);
 
-                    sb.Append(".");
-
-                    pipe.Send(sb.ToString());
+                    if (lb.HasAppended)
+                    {
+                        sb.Append(".");
+                        pipe.Send(sb.ToString());
+                    }
                 }
             }
         }
@@ -86,6 +88,8 @@ public static class Test
         public StringBuilder _sb;
         public string _separator;
         public bool _hasAppended;
+
+        public bool HasAppended => _hasAppended;
 
         public ListBuilder(StringBuilder sb, string separator)
         {
