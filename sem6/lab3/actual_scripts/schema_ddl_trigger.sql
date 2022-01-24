@@ -13,16 +13,6 @@
 use Universitate
 go
 
--- create or alter trigger NoCreditsChange_LogWhenNewColumnAdded_TestTable_Trigger
--- on database
--- for alter_table
--- as
--- begin
---     print convert(nvarchar(max), eventdata(), 1);
---     rollback;
--- end
--- go
-
 create or alter trigger NoCreditsChange_LogWhenNewColumnAdded_TestTable_Trigger
 on database
 for alter_table
