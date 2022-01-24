@@ -11,16 +11,19 @@ struct Options
     bool shouldRecompile = true;
 
     @("The name of the database that contains the given assembly. `master` by default.")
-    string assemblyDatabase = "master";
+    string assemblyDatabaseName = "master";
 
     @("The assembly name (the name of the object in the database). `TestProject` by default.")
-    string assemblyInDatabaseName = "TestProject";
+    string assemblyObjectName = "TestProject";
 
     @("The instance of the server to execute the command at. Autodetected by default.")
     string serverName = null;
 
     @("The relative or absolute path to the project folder.")
-    string pathToProjectDirectory= `..\assembly`;
+    string pathToProjectDirectory = `..\assembly`;
+
+    @("The path to the dll, either relative to the project folder, or absolute.")
+    string pathToCompiledAssembly = `bin\Debug\net461\Test.dll`;
 }
 
 void main(string[] args)
@@ -85,14 +88,27 @@ bool reload(in Options options)
             return false;
     }
 
-    const assemblyName = options.assemblyInDatabaseName;
-    const assemblyDatabase = options.assemblyDatabase;
-    const assemblyPath = absolutePath(options.pathToProjectDirectory).buildPath(`bin\Debug\net461\Test.dll`);
+    const assemblyName         = options.assemblyObjectName;
+    const assemblyDatabaseName = options.assemblyDatabaseName;
+    const assemblyPath         = (){
+        if (isAbsolute(options.pathToCompiledAssembly))
+            return options.pathToCompiledAssembly;
+        return absolutePath(options.pathToProjectDirectory)
+            .buildPath(options.pathToCompiledAssembly);
+    }();
+
+    import std.file : isFile;
+    if (!isFile(assemblyPath))
+    {
+        writeln("The assembly at ", assemblyPath, " is not a file.");
+        return false;
+    }
+
     const refreshProjectSqlString = format(`
         use %s
         go
         alter assembly %s from '%s'
-        go`, assemblyDatabase, assemblyName, assemblyPath);
+        go`, assemblyDatabaseName, assemblyName, assemblyPath);
     writeln("Executing: ", refreshProjectSqlString);
 
     // I'm not sure if the server name is required btw.

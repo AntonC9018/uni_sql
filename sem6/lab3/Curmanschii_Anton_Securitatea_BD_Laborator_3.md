@@ -740,7 +740,7 @@ go
 ![](images/the_created_test_table_1.png)
 
 
-Vom crea un trigger ce nu permite schimbarea coloanei credits, și loghează în consola când se adaugă vreo coloană nouă.
+Vom crea un trigger ce nu permite schimbarea coloanei `credits`, și afișează un mesaj în consola când se adaugă vreo coloană nouă.
 
 La început, pentru test, vom crea un trigger care să ne afișeze simplu datele din `eventdata()`:
 
@@ -797,11 +797,13 @@ add test int</CommandText>
 
 Partea interesantă pentru noi este `AlterTableActionList`:
 ```xml
-<Create>
-  <Columns>
-    <Name>test</Name>
-  </Columns>
-</Create>
+<AlterTableActionList>
+  <Create>
+    <Columns>
+      <Name>test</Name>
+    </Columns>
+  </Create>
+</AlterTableActionList>
 ```
 
 Încă un exemplu:
@@ -812,11 +814,13 @@ check (credits > 10);
 ```
 
 ```xml
-<Create>
-  <Constraints>
-    <Name>TestConstraint</Name>
-  </Constraints>
-</Create>
+<AlterTableActionList>
+  <Create>
+    <Constraints>
+      <Name>TestConstraint</Name>
+    </Constraints>
+  </Create>
+</AlterTableActionList>
 ```
 
 Și dacă încercăm modificare tipului de exemplu:
@@ -827,17 +831,19 @@ alter column credits nvarchar(max) not null
 ```
 
 ```xml
-<Alter>
-  <Columns>
-    <Name>credits</Name>
-  </Columns>
-</Alter>
+<AlterTableActionList>
+  <Alter>
+    <Columns>
+      <Name>credits</Name>
+    </Columns>
+  </Alter>
+</AlterTableActionList>
 ```
 
 
-Deci ca să prevenim modificare tipului coloanei `credits`, trebuie să iterăm prin lista acțiunilor `AlterTableActionList`, selectând nodurile unde acțiunea este `Alter`, și să ne iterăm prin toate coloanele, și să obținem numele câmpului.
-Însă pare că este imposibil de alterat mai multe coloane deodată, și nu este posibil de aplic mai multă decât o singură acțiune într-o comandă, deci și lista `AlterTableActionList`, și nodul îmbricat (în cazul alter column) mereu vor avea un singur item (dacă cunoașteți cum să putem avea mai multe, vă rog să mă informați).
-Este posibil ca lista imbricată să aibă mai multe itemi numai dacă se adaugă sau șterg coloanele sau constrângerile.
+Deci ca să prevenim modificare tipului coloanei `credits`, trebuie să iterăm prin lista acțiunilor `AlterTableActionList`, selectând nodurile unde acțiunea este `Alter`, și să iterăm prin toate coloanele obținând valoarea stocată în elementul `Name`.
+Însă pare că este imposibil de alterat mai multe coloane deodată, și nu este posibil de aplicat mai multă decât o singură acțiune într-o comandă, deci și lista `AlterTableActionList`, și nodul îmbricat (în cazul alter column) mereu vor avea doar un singur item (dacă cunoașteți cum să putem avea mai multe, vă rog să mă informați).
+Este posibil ca lista imbricată să aibă mai multe itemi numai dacă se adaugă sau se șterg coloanele sau constrângerile.
 
 Deci, acum în final putem implementa trigger-ul.
 
@@ -845,15 +851,15 @@ Deci, acum în final putem implementa trigger-ul.
 - Dacă acțiunea este `Drop`, verificăm deja dacă deja *lista* cu coloanele conține o coloană cu numele `credits`.
 
 Problema acum este că nu știu cum să lucrez cu acel tip de date XML în SQL.
-Cunosc doar metoda `value` care dă valoarea unui nod, dar n-am idei cum să iterez prin lista.
+Cunosc doar metoda `value` care returnează valoarea unui nod, dar n-am idei cum să iterez prin lista.
 Lucrul cu XML în SQL Server îmi pare că are o sintaxă prea arbitrară, nu-i asemănătoare cu limbaje de programare normale.
-Cu un ciclu `foreach` iterarea ar fi fost în 10 de ori mai ușoară conceptual.
+Cu un ciclu `foreach` iterarea ar fi fost în 10 ori mai ușoară conceptual.
 
-În loc de aceasta, voi folosi un trigger CLR în C#, deoarece atunci aș putea utiliza metode de inspectare a unui XML normale.
-Setup-ul este mai voluminos, și îl voi descrie doar pe scurt aici:
+În loc de aceasta, voi folosi un trigger CLR în C#, deoarece atunci aș putea utiliza metode de inspectare a unui document XML normale.
+Setup-ul este mai voluminos, îl descriu aici doar pe scurt:
 
 - Am creat un proiect C# (un fișier cu configurația pentru MSBuild ca să fie ușor să setez versiunea, etc., și un fișier cu codul sursă).
-- Am creat o pereche de chei criptografice pentru semnare. Am setat setarea automată în fișierul de configurație MSBuild.
+- Am creat o pereche de chei criptografice pentru semnare. Am setat semnarea automată a assembly-ului de output în fișierul de configurație MSBuild.
 - Am configurat serverul să admită execuția codului CLR.
 - Am creat o procedură T-SQL care să creeze un login pe baza cheilor criptografice utilizate la semnarea assembly-ului.
 - Am creat o perocedură ce permite crearea unui assembly după ce ați creat acel login și acele chei criptografice.
@@ -889,6 +895,11 @@ public static class Test
 }
 ```
 
+Dacă folosiți [script-ul meu de compilare](https://github.com/AntonC9018/uni_sql/blob/master/sem6/lab3/scripts_for_clr/reload_dll.d) scris în limbajul D, pentru acest exemplu puteți să-l executați cam astfel:
+```
+dmd reload_dll.d
+reload_dll.exe --assemblyDatabaseName Universitate
+```
 
 Acum definesc un trigger care să invoce această funcție (am omis mai multe detalii, vedeți scripturi pe github).
 
@@ -905,7 +916,7 @@ go
 ```
 
 
-Dacă acum executăm următoarea comandă, vedem "Hello" afișat în consola, eroarea că tranzacția a fost anulată:
+Dacă acum executăm următoarea comandă, vedem "Hello" afișat în consolă și eroarea că tranzacția a fost anulată:
 
 ```sql
 alter table DDLTriggers_TestSchema.TestTable
@@ -914,7 +925,7 @@ drop column CREDITS
 
 
 Acum, folosind funcțiile pentru citirea unui document XML din C# ușor de utilizat (`System.Xml.Linq`), putem realiza acea logică descrisă mai sus, cu cicluri și verificări ale nodurilor. 
-Deoarece cicluri sunt triviale de folosit în C#, aici deja presupun minim despre structura documentului, admitând și orice număr de acțiuni în `AlterTableActionList`, și orice număr de constrângeri ori coloane, și orice număr de noduri cu numele în interiorul acelor elemente.
+Deoarece este trivial de folosit cicluri în C#, aici deja presupunem minim despre structura documentului, admitând și orice număr de acțiuni în `AlterTableActionList`, și orice număr de constrângeri ori coloane, și orice număr de noduri cu numele în interiorul acelor elemente.
 Am realizat și verificarea dependentă de contextul lingvist al bazei de date, și ca să fie afișat un mesaj care să descrie eroarea.
 
 ```csharp
@@ -1022,7 +1033,7 @@ Adding: TestTable_C1, TestTable_C2.
 ```
 
 
-Codul deja răspunde și la modificări de reguli de integritate (constraint).
+Codul deja răspunde și la modificări ale regulilor de integritate (constraint).
 Doar le afișează, dar am putea face și mai multe verificări, implementând orice logică dorim. 
 Deja este ușor, deoarece avem la dispoziție un limbaj de programare real.
 
