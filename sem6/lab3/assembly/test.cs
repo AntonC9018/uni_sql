@@ -67,6 +67,7 @@ public static class Test
                     foreach (var name in names)
                         lb.AppendItem(name);
 
+                    // Debug asserting here is a good idea, actually, but whatever.
                     if (lb.HasAppended)
                     {
                         sb.Append(".");
