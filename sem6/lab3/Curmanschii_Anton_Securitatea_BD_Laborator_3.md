@@ -647,7 +647,7 @@ Asemănător, dacă încercați să vă conectați din nou de una sau de două o
 ```
 
 Putem examina tabelul de audit pentru a afla despre încercări de logon.
-Tabelul în cazul meu a stat pentru mai mult timp, a stocat deja câteva înregistrări:
+Tabelul în cazul meu a stat pentru mai mult timp, a acumulat deja câteva înregistrări:
 
 ```sql
 select * from LogonMaster_AuditTable
@@ -701,7 +701,196 @@ Trigger-ul creat de mine este destul de inutil, și chiar face utilizarea lui SS
 drop trigger LogonMasterTrigger on all server
 ```
 
-### 3\. Setați la nivel de BD auditul activității DDL ce presupune modificarea schemei tabelelor (adaugarea/modificare unei coloane, adaugarea/modificarea unei condiții de integritate).
+### 3\. Setați la nivel de BD auditul activității DDL ce presupune modificarea schemei tabelelor (adaugarea/modificarea unei coloane, adaugarea/modificarea unei condiții de integritate).
+
+Documentația menționează destul de des conceptul de schemă, care eu nu prea îl înțeleg.
+Sumarizez în continuare descoperirile mele.
+
+Schema înseamnă un obiect care poate conține tabele, proceduri/funcții și vizualizări.
+Schemele există în scopul unei baze de date.
+Proprietarii schemelor sunt database-principals: utilizatorii sau rolurile.
+Fiecare schemă trebuie să aibă exact un singur proprietar.
+Fiecare database-principal poate fi proprietarul mai multor scheme.
+Fiecare utilizator este asociat o singură schemă implicită.
+"Schema implicită" înseamnă că obiectele din această schemă pot fi accesate în scripturi fără a le cualifica numele în întregime (adică  simplu `Numele` în loc de `Schema.Numele`).
+Schema implicită are valoarea implicită pentru fiecare utilizator setată la `dbo`.
+Aceasta înseamnă că schema implicită după crearea unui utilizator nou, dacă nu-i dați o altă valoare, va fi `dbo` (dacă nu a fost clar).
+Obiectele create fără cualificare întreagă nimeresc în schema implicită pentru utilizatorul curent.
+
+DDL declanșatoare sunt obiecte create la nivel de bază de date, sau la nivel de server, dar nu sunt stocate în scheme.
+
+Vom face o schemă suplimentară pentru test.
+În această schemă vom crea o tabelă `TestTable` cu credite.
+
+```sql
+use Universitate
+go
+
+create schema DDLTriggers_TestSchema
+go
+
+create table DDLTriggers_TestSchema.TestTable (
+    id        int not null primary key identity(1, 1),
+    credits   int not null)
+go
+```
+
+![](images/the_created_test_schema_1.png)
+
+![](images/the_created_test_table_1.png)
+
+
+Vom crea un trigger ce nu permite schimbarea coloanei credits, și loghează în consola când se adaugă vreo coloană nouă.
+
+La început, pentru test, vom crea un trigger care să ne afișeze simplu datele din `eventdata()`:
+
+```sql
+use Universitate
+go
+
+create or alter trigger NoCreditsChange_LogWhenNewColumnAdded_TestTable_Trigger
+on database
+for alter_table
+as
+begin
+    print convert(nvarchar(max), eventdata(), 1);
+    rollback;
+end
+go
+```
+
+Și efectuăm test-ul:
+
+```sql
+alter table DDLTriggers_TestSchema.TestTable
+add test int;
+```
+
+În consola vedem următorul output:
+
+```xml
+<EVENT_INSTANCE>
+  <EventType>ALTER_TABLE</EventType>
+  <PostTime>2022-01-24T11:29:28.177</PostTime>
+  <SPID>58</SPID>
+  <ServerName>DESKTOP-SSIOI5J</ServerName>
+  <LoginName>DESKTOP-SSIOI5J\Anton</LoginName>
+  <UserName>dbo</UserName>
+  <DatabaseName>Universitate</DatabaseName>
+  <SchemaName>DDLTriggers_TestSchema</SchemaName>
+  <ObjectName>TestTable</ObjectName>
+  <ObjectType>TABLE</ObjectType>
+  <AlterTableActionList>
+    <Create>
+      <Columns>
+        <Name>test</Name>
+      </Columns>
+    </Create>
+  </AlterTableActionList>
+  <TSQLCommand>
+    <SetOptions ANSI_NULLS="ON" ANSI_NULL_DEFAULT="ON" ANSI_PADDING="ON" QUOTED_IDENTIFIER="ON" ENCRYPTED="FALSE" />
+    <CommandText>alter table DDLTriggers_TestSchema.TestTable&#x0D;
+add test int</CommandText>
+  </TSQLCommand>
+</EVENT_INSTANCE>
+```
+
+Partea interesantă pentru noi este `AlterTableActionList`:
+```xml
+<Create>
+  <Columns>
+    <Name>test</Name>
+  </Columns>
+</Create>
+```
+
+Încă un exemplu:
+```sql
+alter table DDLTriggers_TestSchema.TestTable
+add constraint TestConstraint
+check (credits > 10);
+```
+
+```xml
+<Create>
+  <Constraints>
+    <Name>TestConstraint</Name>
+  </Constraints>
+</Create>
+```
+
+Și dacă încercăm modificare tipului de exemplu:
+
+```sql
+alter table DDLTriggers_TestSchema.TestTable
+alter column credits nvarchar(max) not null
+```
+
+```xml
+<Alter>
+  <Columns>
+    <Name>credits</Name>
+  </Columns>
+</Alter>
+```
+
+
+Deci ca să prevenim modificare tipului coloanei `credits`, trebuie să iterăm prin lista acțiunilor `AlterTableActionList`, selectând nodurile unde acțiunea este `Alter`, și să ne iterăm prin toate coloanele, și să obținem numele câmpului.
+Însă pare că este imposibil de alterat mai multe coloane deodată, și nu este posibil de aplic mai multă decât o singură acțiune într-o comandă, deci și lista `AlterTableActionList`, și nodul îmbricat (în cazul alter column) mereu vor avea un singur item (dacă cunoașteți cum să putem avea mai multe, vă rog să mă informați).
+Este posibil ca lista imbricată să aibă mai multe itemi numai dacă se adaugă sau șterg coloanele sau constrângerile.
+
+Deci, acum în final putem implementa trigger-ul.
+
+- Dacă acțiunea este `Alter`, verificăm dacă numele coloanei este `credits`, în care caz dăm rollback.
+- Dacă acțiunea este `Drop`, verificăm deja dacă deja *lista* cu coloanele conține o coloană cu numele `credits`.
+
+Problema acum este că nu știu cum să lucrez cu acel tip de date XML în SQL.
+Cunosc doar metoda `value` care dă valoarea unui nod, dar n-am idei cum să iterez prin lista.
+Lucrul cu XML în SQL Server îmi pare că are o sintaxă prea arbitrară, nu-i asemănătoare cu limbaje de programare normale.
+Cu un ciclu `foreach` iterarea ar fi fost în 10 de ori mai ușoară conceptual.
+
+În loc de aceasta, voi folosi un trigger CLR în C#, deoarece atunci aș putea utiliza metode de inspectare a unui XML normale.
+Setup-ul este mai voluminos, și îl voi descrie doar pe scurt aici:
+
+- Am creat un proiect C# (un fișier cu configurația pentru MSBuild ca să fie ușor să setez versiunea, etc., și un fișier cu codul sursă).
+- Am creat o pereche de chei criptografice pentru semnare. Am setat setarea automată în fișierul de configurație MSBuild.
+- Am configurat serverul să admită execuția codului CLR.
+- Am creat o procedură T-SQL care să registreze assembly-ul și să creeze un login pe baza cheilor criptografice.
+- Am făcut un script în D care să facă rebuild-ul proiectului și să invoce `alter assembly` pe server ca să-mi ia noul assembly.
+- Am definit câte un wrapper pentru fiecare funcție pr care am definit-o în C#.
+
+[Toate scripturile](https://github.com/AntonC9018/uni_sql/tree/master/sem6/lab3/scripts_for_clr), [Proiectul C#](https://github.com/AntonC9018/uni_sql/tree/master/sem6/lab3/assembly).
+
+Deci aici am definit o funcție care să fie executată ca trigger.
+
+```csharp
+public static class Test
+{
+    public static void Stuff()
+    {
+        SqlContext.Pipe.Send("Hello");
+        Transaction.Current?.Rollback();
+
+        if (SqlContext.TriggerContext is null)
+        {
+            SqlContext.Pipe.Send("The method has been called with a null trigger context." + Environment.NewLine);
+            return;
+        }
+
+        var triggerContext = SqlContext.TriggerContext;
+        SqlContext.Pipe.Send(triggerContext.EventData.ToString());
+    }
+}
+```
+
+
+Acum definesc un trigger care să invoce această funcție.
+
+
+
+
+<!-- https://www.sqlshack.com/working-with-xml-data-in-sql-server/ -->
+
 
 
 

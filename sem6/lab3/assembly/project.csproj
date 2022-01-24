@@ -11,5 +11,7 @@
     <AssemblyAttribute Include="System.Reflection.AssemblyKeyFileAttribute">
       <_Parameter1>key.snk</_Parameter1>
     </AssemblyAttribute>
+    
+    <Reference Include="System.Transactions" />
   </ItemGroup>
 </Project>

@@ -10,6 +10,9 @@ struct Options
     @("Whether to call `dotnet build` before refreshing. Default is `true`")
     bool shouldRecompile = true;
 
+    @("The name of the database that contains the given assembly. `master` by default.")
+    string assemblyDatabase = "master";
+
     @("The assembly name (the name of the object in the database). `TestProject` by default.")
     string assemblyInDatabaseName = "TestProject";
 
@@ -83,8 +86,13 @@ bool reload(in Options options)
     }
 
     const assemblyName = options.assemblyInDatabaseName;
+    const assemblyDatabase = options.assemblyDatabase;
     const assemblyPath = absolutePath(options.pathToProjectDirectory).buildPath(`bin\Debug\net461\Test.dll`);
-    const refreshProjectSqlString = format(`exec RefreshAssembly %s, '%s'`, assemblyName, assemblyPath);
+    const refreshProjectSqlString = format(`
+        use %s
+        go
+        alter assembly %s from '%s'
+        go`, assemblyDatabase, assemblyName, assemblyPath);
     writeln("Executing: ", refreshProjectSqlString);
 
     // I'm not sure if the server name is required btw.
