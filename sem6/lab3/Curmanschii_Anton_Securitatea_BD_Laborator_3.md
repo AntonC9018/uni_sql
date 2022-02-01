@@ -380,6 +380,7 @@ La început, ne creăm un login pentru test.
 Eu am făcut o procedură care șterge acest login dacă deja există, inchizând toate sesiunile curente (nu putem șterge pe un utilizator în timpul în care este logat).
 Ideea am luat-o din [acest răspuns](https://stackoverflow.com/a/29911657/9731532).
 După aceasta se crează un login fără privilegii (doar connect).
+Connect-ul nu-l scot, deoarece atunci trigger-ul nu va lucra.
 
 > Creating a login automatically enables the new login and grants the login the server level CONNECT SQL permission. (din documentația MS).
 
@@ -1037,8 +1038,180 @@ Codul deja răspunde și la modificări ale regulilor de integritate (constraint
 Doar le afișează, dar am putea face și mai multe verificări, implementând orice logică dorim. 
 Deja este ușor, deoarece avem la dispoziție un limbaj de programare real.
 
+
 ### 4\. Setați la nivel de BD auditul erorilor.
 
-<!-- https://docs.microsoft.com/en-us/sql/relational-databases/extended-events/quick-start-extended-events-in-sql-server?view=sql-server-2017 -->
+Se pune bifa la `Failed Login Only`:
+
+![](images/erroneous_logins_check.png)
+
+Dacă avem un trigger de logare, el nu va fi executat cu totul dacă utilizatorul introduce parola greșit.
+Însă putem folosi funcția [LOGINPROPERTY](https://docs.microsoft.com/en-us/sql/t-sql/functions/loginproperty-transact-sql?view=sql-server-ver15) pentru a obține unele date referitor la numărul de ori utilizatorul a introdus parola greșit, ultima dată și ultimul timp când utilizatorul a greșit parola și alte lucruri utile.
+
+Dar îmi pare că cea mai bună variantă ar fi de folosit [Extended Events](https://docs.microsoft.com/en-us/sql/relational-databases/extended-events/quick-start-extended-events-in-sql-server?view=sql-server-2017), care permite cât profilarea performanței unei baze de date, atât și auditul ei.
+Lucrarea mea este deja prea voluminoasă și cum este, de aceea nu vom seta și Extended Events.
+
 
 ### 5\. Setați la nivel de BD auditul modificării privilegiilor și utilizatorilor.
+
+[Trigger targets](https://docs.microsoft.com/en-us/sql/relational-databases/triggers/ddl-events?view=sql-server-ver15).
+
+Iarăși vom crea un trigger CLR, deoarece din C# este mai ușor de lucrat cu `EVENTDATA`.
+Vom crea 2 triggeri, unul pentru `alter role add member`, altul pentru `alter role drop table`,
+deoarece nu putem verifica tipul de acțiune în corpul unui trigger (nu am găsit cum).
+
+```sql
+use Universitate
+go
+
+create table DDLTriggers_TestSchema.PrivilegeAltered_AuditTable (
+    id              int not null primary key identity(1, 1),
+    login_name      nvarchar(max) not null,
+    user_name       nvarchar(max) not null,
+    the_statement   nvarchar(max) not null,
+    role_name       nvarchar(max) not null,
+    was_added       bit not null)
+go
+
+create login privilege_trigger_login
+with password = '124124fwdsdf'
+go
+
+create user privilege_trigger_user
+from login privilege_trigger_login
+with default_schema = DDLTriggers_TestSchema
+go
+
+grant insert
+on DDLTriggers_TestSchema.PrivilegeAltered_AuditTable
+to privilege_trigger_user
+go
+
+create or alter trigger PrivilegeAltered_UserAdded_AuditTrigger
+on database
+with execute as 'privilege_trigger_user'
+for ADD_ROLE_MEMBER
+as
+    external name TestProject.AlterUserOrRole.TriggerFunctionAdded
+go
+
+create or alter trigger PrivilegeAltered_UserDropped_AuditTrigger
+on database
+with execute as 'privilege_trigger_user'
+for DROP_ROLE_MEMBER
+as
+    external name TestProject.AlterUserOrRole.TriggerFunctionDropped
+go
+```
+
+În proiectul C# adaugăm o clasă nouă, cu cele 2 funcții:
+```csharp
+public static class AlterUserOrRole
+{
+    public static void TriggerFunctionAdded()
+    {
+        TriggerFunction(whetherAdded: true);
+    }
+    
+    public static void TriggerFunctionDropped()
+    {
+        TriggerFunction(whetherAdded: false);
+    }
+```
+
+A treia funcție `TriggerFunction` deja va face lucrul.
+
+- Extragem câmpurile necesare din `EVENTDATA`;
+- Adaugăm o întregistrare în tabelul `DDLTriggers_TestSchema.PrivilegeAltered_AuditTable`.
+
+Sunt de acord că modul în care facem interogări SQL din C# este foarte urât (trebuie să construim interogarea ca un șir, să adaugăm parametrii unui câte unu), dar oricum îmi place mai mult decât SQL pur.
+
+```csharp
+public static void TriggerFunction(bool whetherAdded)
+{
+    var pipe = SqlContext.Pipe;
+
+    var triggerContext = SqlContext.TriggerContext;
+    if (triggerContext is null)
+    {
+        pipe.Send("The method has been called with a null trigger context.");
+        return;
+    }
+
+    using (var reader = triggerContext.EventData.CreateReader())
+    {
+        var document = XDocument.Load(reader);
+        var firstElement = document.FirstNode as XElement;
+
+        if (firstElement.Element("ObjectType").Value != "SQL USER")
+            return;
+
+        var commandText = firstElement
+            .Element("TSQLCommand")
+            .Element("CommandText")
+            .Value;
+        
+        var roleName = firstElement
+            .Element("RoleName")
+            .Value;
+
+        var affectedUserName = firstElement
+            .Element("ObjectName")
+            .Value;
+
+        using (var connection = new SqlConnection("context connection=true"))   
+        {  
+            connection.Open();
+
+            {
+                var command = connection.CreateCommand();
+                const string insertQueryString = @"
+                    insert into DDLTriggers_TestSchema.PrivilegeAltered_AuditTable (
+                            login_name,
+                            user_name,
+                            the_statement,
+                            role_name,
+                            was_added)
+                        values (
+                            ORIGINAL_LOGIN(),"
+                            + "@" + nameof(affectedUserName) + ","
+                            + "@" + nameof(commandText)      + ","
+                            + "@" + nameof(roleName)         + ","
+                            + "@" + nameof(whetherAdded)     + ")";
+                command.CommandText = insertQueryString;
+
+                var ps = command.Parameters; 
+                ps.AddWithValue("@" + nameof(affectedUserName), affectedUserName);
+                ps.AddWithValue("@" + nameof(commandText),      commandText);
+                ps.AddWithValue("@" + nameof(roleName),         roleName);
+                ps.AddWithValue("@" + nameof(whetherAdded),     whetherAdded);
+
+                int numberOrRowAdded = command.ExecuteNonQuery();
+
+                pipe.Send($"Added {numberOrRowAdded} rows");
+            }
+        }
+    }
+}
+```
+
+
+Verificarea:
+
+```sql
+alter role TestRoleStuff
+add member aaaa
+go
+
+alter role TestRoleStuff
+drop member aaaa
+go
+
+select * from DDLTriggers_TestSchema.PrivilegeAltered_AuditTable
+go
+```
+
+| id | login_name            | user_name | the_statement                              | role_name     | was_added |
+|----|-----------------------|-----------|--------------------------------------------|---------------|-----------|
+| 4  | DESKTOP-SSIOI5J\Anton | aaaa      | alter role TestRoleStuff  add member aaaa  | TestRoleStuff | 1         |
+| 5  | DESKTOP-SSIOI5J\Anton | aaaa      | alter role TestRoleStuff  drop member aaaa | TestRoleStuff | 0         |
