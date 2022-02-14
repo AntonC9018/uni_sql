@@ -56,26 +56,14 @@ create table Scoala.Functie(
     descriere    nvarchar(max) not null,
 
     -- Flaguri pentru filtrarea usoara a rezultatelor.
-    profesor_bit    bit not null,
+    profesor_bit    bit not null default 0,
     -- Rezervate pentru optimizari in viitor.
-    reserverd_1_bit bit not null,
-    reserverd_2_bit bit not null,
-    reserverd_3_bit bit not null,
+    reserverd_1_bit bit not null default 0,
+    reserverd_2_bit bit not null default 0,
+    reserverd_3_bit bit not null default 0,
 
     constraint Functie_PK
-    primary key (id),
-
-    constraint Functie_default_profesor_bit
-    default 0 for profesor_bit,
-    
-    constraint Functie_default_reserverd_1_bit
-    default 0 for reserverd_1_bit,
-    
-    constraint Functie_default_reserverd_2_bit
-    default 0 for reserverd_2_bit,
-    
-    constraint Functie_default_reserverd_3_bit
-    default 0 for reserverd_3_bit,
+    primary key (id)
 );
 
 create table Scoala.AngajatFunctie(
@@ -83,6 +71,8 @@ create table Scoala.AngajatFunctie(
     
     -- Lookup in tabelul Functie.
     functie_id int not null,
+
+    angajat_id int not null,
     
     -- Data angajarii in aceasta functie.
     -- TODO: ensure it's sorted along with id, I don't know how.
@@ -92,7 +82,8 @@ create table Scoala.AngajatFunctie(
     salariu_pe_luna smallmoney not null,
     
     -- Data iesirii din acesta functie.
-    data_until date null, 
+    -- Daca data este null, angajatul inca este angajat pentru acea functie.
+    data_until date null default null, 
 
     constraint AngajatFunctie_PK
     primary key (id),
@@ -101,9 +92,9 @@ create table Scoala.AngajatFunctie(
     foreign key (functie_id)
     references Scoala.Functie (id),
 
-    -- Daca data este null, angajatul inca este angajat pentru acea functie.
-    constraint AngajatFunctie_default_data_until
-    default null for data_until
+    constraint AngajatFunctie_FK_angajat
+    foreign key (angajat_id)
+    references Scoala.Angajat (id)
 );
 
 
@@ -112,7 +103,7 @@ create table Scoala.AngajatCualificatieInfo(
     angajat_id int not null,
 
     -- Orice informatii, nerelevant pentru baze de date.
-    textual_description nvarchar(max) not null,
+    descrierea_textuala nvarchar(max) not null,
 
     constraint AngajatCualificatieInfo_PK
     primary key (id),
@@ -294,18 +285,18 @@ end
 go
 
 create or alter function Scoala.GetStartDateOf_Semester_0(@an_studii smallint)
-returns smallint
+returns date
 as
 begin
-    return datefromparts(@an_studii, 8, 0);
+    return datefromparts(@an_studii, 8, 1);
 end
 go
 
 create or alter function Scoala.GetStartDateOf_Semester_1(@an_studii smallint)
-returns smallint
+returns date
 as
 begin
-    return datefromparts(@an_studii + 1, 0, 7);
+    return datefromparts(@an_studii + 1, 1, 7);
 end
 go
 
@@ -318,16 +309,16 @@ begin
 end
 go
 
-create or alter function Scoala.Map_Date_To_AnSemestruOffset(@data date)
+create or alter function Scoala.Map_Date_To_AnSemestruOffset(@date date)
 returns smallint
 as
 begin
     declare @year_school_start               smallint = Scoala.GetYearSchoolStart();
-    declare @current_year                    smallint = year(@data);
+    declare @current_year                    smallint = year(@date);
     declare @current_year_offset             smallint = @current_year - @year_school_start;
     declare @semester_offset_at_current_year smallint = @current_year_offset * 2;
 
-    if Scoala.GetStartDateOf_Semester_0(@current_year) > @data
+    if Scoala.GetStartDateOf_Semester_0(@current_year) > @date
         -- Anul de studii trecut se continuie in anul curent (anul real, data).
         return @semester_offset_at_current_year - 1;
 
@@ -340,22 +331,22 @@ returns smallint
 as
 begin
     declare @today date = getdate();
-    return Map_Date_To_AnSemestruOffset(@today);
+    return Scoala.Map_Date_To_AnSemestruOffset(@today);
 end
 go
 
 create or alter function Scoala.Map_AnSemestruOffsetAndNumarZi_To_Date(@semestru_offset smallint, @numar_zi tinyint)
 returns date
 as
-begin
-    declare @year_start   smallint = Map_AnSemestruOffset_SemestruActual(@semestru_offset);
+begin    
+    declare @year_start   smallint = Scoala.Map_AnSemestruOffset_SemestruActual(@semestru_offset);
     declare @semestru_0_1 smallint = @semestru_offset % 2;
     declare @semestru_date_start date;
     
     if @semestru_0_1 = 0
-        select @semestru_day_start = Scoala.GetStartDateOf_Semester_0();
+        select @semestru_date_start = Scoala.GetStartDateOf_Semester_0(@year_start);
     else
-        select @semestru_day_start = Scoala.GetStartDateOf_Semester_1();
+        select @semestru_date_start = Scoala.GetStartDateOf_Semester_1(@year_start);
     
     -- DD means Day
     return dateadd(DD, @numar_zi, @semestru_date_start);
@@ -371,13 +362,13 @@ begin
 end
 go
 
-create view Scoala.BugetulCurent
+create or alter view Scoala.BugetulCurent
 as 
     select sum(suma) as buget
     from Scoala.Cheltuieli;
 go
 
-create view Scoala.ClasaStudenti_SemestrulCurent
+create or alter view Scoala.ClasaStudenti_SemestrulCurent
 as
     select
         (convert(nvarchar(max), clasa0.semestru_de_studii / 2) + clasa0.litera) as clasa,
@@ -395,37 +386,39 @@ as
     where clasa0.semestru_de_existenta_offset = Scoala.Get_AnSemestruOffsetCurent()
 go
 
-create view Scoala.NotaMedieStudentuluiLaObiect_SemestrulCurent
+create or alter view Scoala.NotaMedieStudentuluiLaObiect_SemestrulCurent
 as
     select
-        student.nume       as student_nume,
-        student.prenume    as student_prenume,
-        obiect.nume        as obiect_nume,
-        avg(nota.nota + 1) as nota_medie
+        student.nume            as student_nume,
+        student.prenume         as student_prenume,
+        obiect.nume             as obiect_nume,
+        avg(nota0.valoarea + 1) as nota_medie
     
     from Scoala.Student as student
 
-    inner join Scoala.Clasa as clasa0
-    on clasa0.id = nota.clasa_id
+    inner join Scoala.Nota as nota0
+    on nota0.student_id = student.id
 
-    inner join Scoala.Nota as nota
-    on nota.student_id = student.id
+    inner join Scoala.Clasa as clasa0
+    on clasa0.id = nota0.clasa_id
 
     inner join Scoala.Obiect as obiect
-    on obiect.id = nota.obiect_id
+    on obiect.id = nota0.obiect_id
 
     where clasa0.semestru_de_existenta_offset = Scoala.Get_AnSemestruOffsetCurent()
+
+    group by student.nume, student.prenume, obiect.nume
 go
 
 
-create view Scoala.ProfesoriiAngajatiCurent
+create or alter view Scoala.ProfesoriiAngajatiCurent
 as
     select
-        angajat.id                      as angajat_id,
-        angajat.nume                    as profesor_nume,
-        angajat.prenume                 as profesor_prenume,
-        string_agg(functia.nume, '; ')  as functii,
-        sum(functia.salariu_pe_luna)    as salariu_pe_luna
+        angajat.id       as angajat_id,
+        angajat.nume     as profesor_nume,
+        angajat.prenume  as profesor_prenume,
+        string_agg(functie.nume, '; ')       as functii,
+        sum(angajat_functie.salariu_pe_luna) as salariu_pe_luna
     
     from Scoala.Angajat as angajat
 
@@ -437,8 +430,8 @@ as
 
     where 
         functie.profesor_bit = 1
-        and angajat_functie.data_until = null
+        and angajat_functie.data_until is null
         -- and angajat_functie.data_from <= getdate()
 
-    group by angajat.id
+    group by angajat.id, angajat.nume, angajat.prenume
 go

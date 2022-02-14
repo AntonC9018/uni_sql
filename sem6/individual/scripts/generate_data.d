@@ -6,6 +6,7 @@ import core.time;
 import std.datetime;
 import std.typecons;
 
+enum dbName = "Scoala";
 enum schemaName = "Scoala";
 enum schoolCreationDate = Date(2000, 1, 2);
 
@@ -58,7 +59,7 @@ struct UsePool { string name; }
 /// 
 struct GenerateCount { int count; }
 
-
+struct CallFunc { string funcName; }
 
 import std.csv;
 import std.algorithm;
@@ -264,7 +265,7 @@ void main()
     {
         static foreach (info; FKArrays!Type)
         {{
-            size_t countOfOtherThing = Data!(info.ForeignType).count;
+            const countOfOtherThing = Data!(info.ForeignType).count;
             auto fkArr = info.array;
 
             static if (info.flags & FKFlags.exhaustAllReferences)
@@ -272,7 +273,7 @@ void main()
                 size_t index = 0;
                 foreach (ref it; fkArr)
                 {
-                    it = cast(int) index;
+                    it = (cast(int) index) + 1;
                     index++;
                     if (index == countOfOtherThing)
                         index = 0;
@@ -283,21 +284,32 @@ void main()
                 foreach (ref it; fkArr)
                 {
                     import std.random;
-                    it = uniform!("[)", int)(0, cast(int) countOfOtherThing);
+                    it = uniform!("[]", int)(1, cast(int) countOfOtherThing);
                 }
             }
         }}
     }
 
     auto b = appender!string;
+    b ~= "use " ~ dbName ~ "\n";
+
+    import std.format;
+    import std.string;
+
     static foreach (Type; Types)
-    {
-        foreach (index; 0 .. Data!Type.count)
+    {{
+        static foreach (field; Type.tupleof)
         {{
+            static if (hasUDA!(field, CallFunc))
+            {
+                // only works for date rn
+                b ~= "declare @" ~ __traits(identifier, field) ~ " date;\n";
+            }
+        }}
+
+        void writeStart()
+        {
             b ~= "insert into " ~ schemaName ~ "." ~ Type.stringof ~ "(\n";
-            import std.format;
-            import std.string;
-            
             {
                 int appendCommandCountdown = cast(int) (FKArrays!Type.length + Type.tupleof.length);
                 
@@ -311,55 +323,91 @@ void main()
                 }
 
                 static foreach (fkArr; FKArrays!Type)
-                    appendWithComma("id_" ~ toLower(fkArr.ForeignType.stringof));
+                    appendWithComma(toLower(fkArr.ForeignType.stringof ~ "_id"));
                 static foreach (field; Type.tupleof)
                     appendWithComma(__traits(identifier, field));
                     
-                b ~= ") values (\n";
+                b ~= ") values";
             }
-            {
-                void appendT(T)(T value)
-                {
-                    static if (is(T == Date))
-                    {
-                        b.formattedWrite("cast('%d-%d-%d' as date)",
-                            value.year, cast(int) value.month, value.day);
-                    }
-                    else static if (is(T == string))
-                    {
-                        b ~= "'";
-                        b ~= value.replace("'", "''");
-                        b ~= "'";
-                    }
-                    else static if (is(T == bool))
-                    {
-                        b ~= value ? "1" : "0";
-                    }
-                    else static if (is(T : Nullable!TT, TT))
-                    {
-                        if (value.isNull)
-                            b ~= "null";
-                        else
-                            appendT!TT(value.get());
-                    }
-                    else static if (is(T : SmallMoney))
-                    {
-                        b.formattedWrite("%d", value.amount);
-                    }
-                    else
-                    {
-                        b.formattedWrite("%d", value);
-                    }
-                }
+        }
 
+        foreach (index; 0 .. Data!Type.count)
+        {{
+            if (index % 1000 == 0)
+                writeStart();
+
+            void appendT(T)(T value)
+            {
+                static if (is(T == Date))
+                {
+                    b.formattedWrite("cast('%d-%d-%d' as date)",
+                        value.year, cast(int) value.month, value.day);
+                }
+                else static if (is(T == string))
+                {
+                    b ~= "'";
+                    b ~= value.replace("'", "''");
+                    b ~= "'";
+                }
+                else static if (is(T == bool))
+                {
+                    b ~= value ? "1" : "0";
+                }
+                else static if (is(T : Nullable!TT, TT))
+                {
+                    if (value.isNull)
+                        b ~= "null";
+                    else
+                        appendT!TT(value.get());
+                }
+                else static if (is(T : SmallMoney))
+                {
+                    b.formattedWrite("%d", value.amount);
+                }
+                else static if (is(T == char))
+                {
+                    if (value == '\'')
+                        b ~= "''''";
+                    else
+                        b.formattedWrite("'%c'", value);
+                }
+                else
+                {
+                    b.formattedWrite("%d", value);
+                }
+            }
+
+            b ~= "\n(";
+            
+            static foreach (field; Type.tupleof)
+            {{
+                alias callFuncUDAs = getUDAs!(field, CallFunc);
+                static assert(callFuncUDAs.length <= 1);
+                static if (callFuncUDAs.length > 0)
+                {
+                    CallFunc f = callFuncUDAs[0];
+                    b ~= "exec @" ~ __traits(identifier, field) ~ " = " 
+                        ~ f.funcName ~ "(";
+
+                    appendT(__traits(child, Data!Type.array[index], field));
+
+                    b ~= ");\n";
+                }
+            }}
+
+            
+            {
                 int appendCommandCountdown0 = cast(int) (FKArrays!Type.length + Type.tupleof.length);
 
-                void append(T)(T value)
+                void append(bool isRaw = false, T)(T value)
                 {
                     import std.conv : to;
                     b ~= "    ";
 
-                    appendT(value);
+                    static if (isRaw)
+                        b ~= value;
+                    else
+                        appendT(value);
 
                     appendCommandCountdown0--;
                     if (appendCommandCountdown0 > 0)
@@ -367,16 +415,33 @@ void main()
                     b ~= "\n";
                 }
                 
+
                 static foreach (fkArr; FKArrays!Type)
                     append(fkArr.array[index]);
                 static foreach (field; Type.tupleof)
-                    append(__traits(child, Data!Type.array[index], field));
+                {{
+                    static if (hasUDA!(field, CallFunc))
+                    {
+                        string value = "@" ~ __traits(identifier, field);
+                        enum isRaw = true;
+                    }
+                    else
+                    {
+                        auto value = __traits(child, Data!Type.array[index], field);
+                        enum isRaw = false;
+                    }
 
-                b ~= ")";
-                b ~= "\n";
+                    append!(isRaw)(value);
+                }}
+
             }
+
+            b ~= ")";
+            if (index % 1000 < 999 && index != Data!Type.count - 1)
+                b ~= ",";
+            b ~= "\n";
         }}
-    }
+    }}
 
     string outputFileName = "add_things.sql";
     auto file = File(outputFileName, "w");
@@ -385,7 +450,7 @@ void main()
     file.close();
 }
 
-@GenerateCount(1000)
+@GenerateCount(1501)
 struct Student
 {
     @DateRange(Date(1998, 1, 1), Date(2009, 1, 1))
@@ -398,7 +463,7 @@ struct Student
     string nume;
 }
 
-@GenerateCount(25)
+@GenerateCount(27)
 struct Angajat
 {
     @DateRange(Date(1950, 1, 1), Date(1980, 1, 1))
@@ -412,7 +477,7 @@ struct Angajat
 }
 
 
-@GenerateCount(35)
+@GenerateCount(37)
 struct Functie
 {
     @PositionName
@@ -421,13 +486,14 @@ struct Functie
     @Lorem
     string descriere;
     
-    @TrueChance(0.25)
-    bool profesorBit;
+    @TrueChance(0.75)
+    bool profesor_bit;
 }
 
 
-@GenerateCount(75)
+@GenerateCount(77)
 @(ForeignKey!(Functie))
+@(ForeignKey!(Angajat))
 struct AngajatFunctie
 {
     @DateRange(Date(2000, 1, 2), Date(2004, 1, 1))
@@ -437,31 +503,31 @@ struct AngajatFunctie
     SmallMoney salariu_pe_luna;
     
     @MoreThan("data_from")
-    @NullChance(0.7f)
+    @NullChance(0.75)
     @DateRange(Date(2000, 1, 2), Date(2020, 1, 1))
     Nullable!Date data_until;
 }
 
-@GenerateCount(50)
+@GenerateCount(51)
 @(ForeignKey!Angajat)
 struct AngajatCualificatieInfo
 {
     @Lorem
-    string textual_description;
+    string descrierea_textuala;
 }
 
 
-@GenerateCount(25)
+@GenerateCount(27)
 struct Obiect
 {
     @Subjects
     string nume;
 
-    @DateRange(Date(2000, 1, 2), Date(2010, 1, 1))
-    Date semestru_de_prima_aparitie_offset;
+    @Range!int(0, 20)
+    int semestru_de_prima_aparitie_offset;
 }
 
-@GenerateCount(100)
+@GenerateCount(501)
 struct Clasa
 {
     @IntRange(0, 22 * 2)
@@ -477,7 +543,7 @@ struct Clasa
     char litera;
 }
 
-@GenerateCount(250)
+@GenerateCount(257)
 @(ForeignKey!(Angajat))
 @(ForeignKey!(Obiect))
 @(ForeignKey!(Clasa, FKFlags.exhaustAllReferences))
@@ -487,7 +553,7 @@ struct ProfesorObiectClasa
 
 
 // It will be a bit wrong, but who cares
-@GenerateCount(250)
+@GenerateCount(251)
 @(ForeignKey!(Clasa, FKFlags.exhaustAllReferences))
 @(ForeignKey!(Student, FKFlags.exhaustAllReferences))
 struct ClasaStudent
@@ -496,7 +562,7 @@ struct ClasaStudent
 }
 
 
-@GenerateCount(15000)
+@GenerateCount(15017)
 @(ForeignKey!(Student, FKFlags.exhaustAllReferences))
 @(ForeignKey!(Obiect, FKFlags.exhaustAllReferences))
 @(ForeignKey!(Clasa, FKFlags.exhaustAllReferences))
