@@ -5,8 +5,8 @@ import core.time;
 import std.datetime;
 import std.typecons;
 
-const schemaName = "Scoala";
-const schoolCreationDate = Date(2000, 1, 2);
+enum schemaName = "Scoala";
+enum schoolCreationDate = Date(2000, 1, 2);
 
 ///
 enum PrimaryKey;
@@ -14,22 +14,24 @@ enum PrimaryKey;
 
 enum FKFlags
 {
+    none = 0,
     /// May refer to more than one thing from the other table.
-    allowMultiple,
+    allowMultiple = 1,
     /// Must exhaust all references in the foreign table.
-    exhaustAllReferences,
+    exhaustAllReferences = 2,
+    /// Force unique
+    // allowMultiple = 4
 }
 
 /// 
-template ForeignKey(T, FKFlags f)
-{ 
-    alias Type = T;
-    enum flags = f;
-}
+// struct ForeignKey(T, FKFlags f = FKFlags.none){}
+struct ForeignKey(T, FKFlags f = FKFlags.none);
 
 /// Generate the random number in the given range.
 struct Range(T) { T from; T to; }
 
+///
+alias IntRange = Range!int;
 ///
 alias DateRange = Range!Date;
 
@@ -51,16 +53,6 @@ struct TrueChance { float chance; }
 
 /// Which pool to use. Must be present at runtime in the mapper
 struct UsePool { string name; }
-
-///
-enum LastName = UsePool("LastName");
-///
-enum Name = UsePool("Name");
-///
-enum PositionName = UsePool("PositionName");
-
-/// Fill with random nonsense
-enum Lorem = UsePool("Lorem");
 
 /// 
 struct GenerateCount { int count; }
@@ -110,24 +102,40 @@ string[] readLastNames()
 // {
 //     return a[$ - 1] == '\r' ? a[0 .. $ - 1]
 
-string[] readLorem()
+string[] readTxtNonEmpty(string filename)
 {
     import std.string : strip;
-    return File("../data/lorem.txt")
+    return File(filename)
         .byLineCopy()
         .filter!(a => a != "")
         .map!(a => strip(a))
         .array;
 }
 
+///
+enum LastName = UsePool("LastName");
+///
+enum Name = UsePool("Name");
+///
+enum PositionName = UsePool("PositionName");
+
+/// Fill with random nonsense
+enum Lorem = UsePool("Lorem");
+
+///
+enum Subjects = UsePool("Subject");
+
+
+
+
 void main()
 {
-    auto b = appender!string;
-
     auto pools = [
         "Name": readNames(),
         "LastName": readLastNames(),
-        "Lorem": readLorem(),
+        "Lorem": readTxtNonEmpty("../data/lorem.txt"),
+        "Subject": readTxtNonEmpty("../data/subjects.txt"),
+        "PositionName": readTxtNonEmpty("../data/job_names.txt"),
     ];
 
     import std.meta;
@@ -141,19 +149,243 @@ void main()
         AngajatCualificatieInfo,
         Obiect,
         Clasa,
-        ProfesorObiect,
+        ProfesorObiectClasa,
         ClasaStudent,
-        ClasaObiect,
-        Nota,
-        Cheltuieli);
+        Nota);
+
+
+    template Data(Type)
+    {
+        enum count = getUDAs!(Type, GenerateCount)[0].count;
+        Type[] array;
+    }
+
+    static foreach (Type; Types)
+    {{
+        Data!Type.array = new Type[](Data!Type.count);
+        auto myArray = Data!Type.array;
+        
+        foreach (index, ref it; myArray)
+        { 
+            static foreach (field; Type.tupleof)
+            {{
+                import std.random;
+                static foreach (uda; __traits(getAttributes, field))
+                {
+                    static if (is(typeof(uda) == UsePool))
+                    {{
+                        auto pool = pools[uda.name];
+                        auto poolItemIndex = uniform!("[)", size_t)(0, pool.length);
+                        __traits(getMember, it, __traits(identifier, field)) = pool[poolItemIndex];
+                    }}
+                    static if (is(typeof(uda) : Range!T, T))
+                    {{
+                        auto generateRng()
+                        {
+                            static if (is(T == Date))
+                            {
+                                auto difference = uda.to - uda.from;
+                                auto days = uniform!("[]")(0, difference.total!"days");
+                                auto result = uda.from + dur!"days"(days);
+                            }
+                            else static if (is(T == SmallMoney))
+                            {
+                                auto amount = uniform!("[]")(uda.from.amount, uda.to.amount);
+                                auto result = SmallMoney(amount);
+                            }
+                            else
+                            {
+                                auto result = uniform!("[]")(uda.from, uda.to);
+                            }
+                            return result;
+                        }
+
+                        auto result = generateRng();
+
+                        // hax
+                        static if (hasUDA!(field, MoreThan))
+                        {{
+                            size_t counter = 0;
+                            while (result <= __traits(getMember, it, getUDAs!(field, MoreThan)[0].fieldName))
+                            {
+                                result = generateRng();
+                                if (counter++ == 10000)
+                                    assert(false, "Probably an infinite thing");
+                            }
+                        }}
+                        static if (hasUDA!(field, NullChance))
+                        {{
+                            if (uniform!"[)"(0f, 1f) > getUDAs!(field, NullChance)[0].chance)
+                                __traits(getMember, it, __traits(identifier, field)) = result;
+                        }}
+                        else
+                            __traits(getMember, it, __traits(identifier, field)) = result;
+
+                    }}
+                    static if (is(typeof(uda) : TrueChance))
+                    {{
+                        __traits(getMember, it, __traits(identifier, field)) = uniform!"[)"(0f, 1f) < uda.chance;
+                    }}
+                }
+            }}
+        }
+    }}
+
+    template FKArrayInfo(Type, alias uda)
+    {
+        static if (is(uda == ForeignKey!(FType, f), FType, FKFlags f))
+        {
+            alias flags = f;
+            alias ForeignType = FType;
+            int[] array = new int[](Data!Type.count);
+        }
+        else 
+            static assert(0);
+    }
+
+    template FKArrays(Type)
+    {
+        alias result = AliasSeq!();
+        static foreach (uda; __traits(getAttributes, Type))
+        {
+            static if (__traits(compiles, FKArrayInfo!(Type, uda)))
+            {
+                result = AliasSeq!(result, FKArrayInfo!(Type, uda));
+            }
+        }
+        alias FKArrays = result;
+    }
 
     static foreach (Type; Types)
     {
+        static foreach (info; FKArrays!Type)
+        {{
+            size_t countOfOtherThing = Data!(info.ForeignType).count;
+            auto fkArr = info.array;
 
+            static if (info.flags & FKFlags.exhaustAllReferences)
+            {{
+                size_t index = 0;
+                foreach (ref it; fkArr)
+                {
+                    it = cast(int) index;
+                    index++;
+                    if (index == countOfOtherThing)
+                        index = 0;
+                }
+            }}
+            else
+            {
+                foreach (ref it; fkArr)
+                {
+                    import std.random;
+                    it = uniform!("[)", int)(0, cast(int) countOfOtherThing);
+                }
+            }
+        }}
     }
+
+    auto b = appender!string;
+    static foreach (Type; Types)
+    {
+        static if (is(Type == ProfesorObiectClasa))
+        {
+            writeln(FKArrays!Type.length);
+        }
+        foreach (index; 0 .. Data!Type.count)
+        {{
+            b ~= "insert into " ~ schemaName ~ "." ~ Type.stringof ~ "(\n";
+            import std.format;
+            import std.string;
+            
+            {
+                int appendCommandCountdown = cast(int) (FKArrays!Type.length + Type.tupleof.length);
+                
+                void appendWithComma(string str)
+                {
+                    b ~= "    " ~ str;
+                    appendCommandCountdown--;
+                    if (appendCommandCountdown > 0)
+                        b ~= ",";
+                    b ~= "\n";
+                }
+
+                static foreach (fkArr; FKArrays!Type)
+                    appendWithComma("id_" ~ toLower(fkArr.ForeignType.stringof));
+                static foreach (field; Type.tupleof)
+                    appendWithComma(__traits(identifier, field));
+                    
+                b ~= ") values (\n";
+            }
+            {
+                void appendT(T)(T value)
+                {
+                    static if (is(T == Date))
+                    {
+                        b.formattedWrite("cast('%d-%d-%d' as date)",
+                            value.year, cast(int) value.month, value.day);
+                    }
+                    else static if (is(T == string))
+                    {
+                        b ~= "'";
+                        b ~= value.replace("'", "''");
+                        b ~= "'";
+                    }
+                    else static if (is(T == bool))
+                    {
+                        b ~= value ? "1" : "0";
+                    }
+                    else static if (is(T : Nullable!TT, TT))
+                    {
+                        if (value.isNull)
+                            b ~= "null";
+                        else
+                            appendT!TT(value.get());
+                    }
+                    else static if (is(T : SmallMoney))
+                    {
+                        b.formattedWrite("%d", value.amount);
+                    }
+                    else
+                    {
+                        b.formattedWrite("%d", value);
+                    }
+                }
+
+                int appendCommandCountdown0 = cast(int) (FKArrays!Type.length + Type.tupleof.length);
+
+                void append(T)(T value)
+                {
+                    import std.conv : to;
+                    b ~= "    ";
+
+                    appendT(value);
+
+                    appendCommandCountdown0--;
+                    if (appendCommandCountdown0 > 0)
+                        b ~= ",";
+                    b ~= "\n";
+                }
+                
+                static foreach (fkArr; FKArrays!Type)
+                    append(fkArr.array[index]);
+                static foreach (field; Type.tupleof)
+                    append(__traits(child, Data!Type.array[index], field));
+
+                b ~= ")";
+                b ~= "\n";
+            }
+        }}
+    }
+
+    string outputFileName = "add_things.sql";
+    auto file = File(outputFileName, "w+");
+    file.write(b[]);
+    file.flush();
+    file.close();
 }
 
-@GenerateCount(600)
+@GenerateCount(1000)
 struct Student
 {
     @DateRange(Date(1998, 1, 1), Date(2009, 1, 1))
@@ -211,34 +443,68 @@ struct AngajatFunctie
 }
 
 @GenerateCount(50)
+@(ForeignKey!Angajat)
 struct AngajatCualificatieInfo
 {
-      id         int not null identity(1, 1),
-    angajat_id int not null,
-
-    -- Orice informatii, nerelevant pentru baze de date.
-    textual_description nvarchar(max) not null,
-
-    constraint AngajatCualificatieInfo_PK
-    primary key (id),
-
-    constraint AngajatCualificatieInfo_FK_angajat
-    foreign key (angajat_id)
-    references Scoala.Angajat (id)
+    @Lorem
+    string textual_description;
 }
 
 
-create table Scoala.Obiect(
-    id   int not null identity(1, 1),
-    nume nvarchar(128) not null,
+@GenerateCount(25)
+struct Obiect
+{
+    @Subjects
+    string nume;
 
-    -- TODO: ensure it's sorted along with id, I don't know how.
-    semestru_de_prima_aparitie_offset smallint not null,
-    
-    -- Probabil in viata reala vom avea nevoie de mai multe date aici, ca la ce an de studii
-    --  se corespunde obiectul, poate trebuie sa diferentiem obiecte si cursuri, etc.
-    -- prim_an_de_studii_posibil tinyint,
+    @DateRange(Date(2000, 1, 2), Date(2010, 1, 1))
+    Date semestru_de_prima_aparitie_offset;
+}
 
-    constraint Obiect_PK
-    primary key (id),
-);
+@GenerateCount(100)
+struct Clasa
+{
+    @IntRange(0, 22 * 2)
+    int semestru_de_existenta_offset;
+
+    @NullChance(1)
+    Nullable!int predecesor_clasa_id;
+
+    @IntRange(0, 23)
+    int semestru_de_studii;
+
+    @(Range!char('A', 'C'))
+    char litera;
+}
+
+@GenerateCount(250)
+@(ForeignKey!(Angajat, FKFlags.allowMultiple))
+@(ForeignKey!(Obiect, FKFlags.allowMultiple))
+@(ForeignKey!(Clasa, FKFlags.exhaustAllReferences|FKFlags.allowMultiple))
+struct ProfesorObiectClasa
+{
+}
+
+
+// It will be a bit wrong, but who cares
+@GenerateCount(250)
+@(ForeignKey!(Clasa, FKFlags.exhaustAllReferences|FKFlags.allowMultiple))
+@(ForeignKey!(Student, FKFlags.allowMultiple|FKFlags.exhaustAllReferences))
+struct ClasaStudent
+{
+
+}
+
+
+@GenerateCount(15000)
+@(ForeignKey!(Student, FKFlags.allowMultiple|FKFlags.exhaustAllReferences))
+@(ForeignKey!(Obiect, FKFlags.allowMultiple|FKFlags.exhaustAllReferences))
+@(ForeignKey!(Clasa, FKFlags.allowMultiple|FKFlags.exhaustAllReferences))
+struct Nota
+{
+    @(Range!ubyte(0, 75))
+    ubyte numar_zi;
+
+    @(Range!ubyte(0, 9))
+    ubyte valoarea;
+}

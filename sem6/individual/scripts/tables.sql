@@ -172,7 +172,7 @@ create table Scoala.Clasa(
     check (semestru_de_studii >= 0 and semestru_de_studii <= 23)
 );
 
-create table Scoala.ProfesorObiect(
+create table Scoala.ProfesorObiectClasa(
     id          int not null identity(1, 1),
     angajat_id  int not null,
     obiect_id   int not null,
@@ -217,22 +217,22 @@ create table Scoala.ClasaStudent(
 
 -- Toti studentii din clasa mereu sunt inscrisi la acelasi subiect.
 -- La scoala lucreaza astfel, de aceea proiectam baza de date conform acestei constangeri.
-create table Scoala.ClasaObiect(
-    id         int not null identity(1, 1),
-    clasa_id   int not null,
-    obiect_id  int not null,
+-- create table Scoala.ClasaObiect(
+--     id         int not null identity(1, 1),
+--     clasa_id   int not null,
+--     obiect_id  int not null,
 
-    constraint ClasaObiect_PK
-    primary key (id),
+--     constraint ClasaObiect_PK
+--     primary key (id),
 
-    constraint ClasaObiect_FK_clasa
-    foreign key (clasa_id)
-    references Scoala.Clasa (id),
+--     constraint ClasaObiect_FK_clasa
+--     foreign key (clasa_id)
+--     references Scoala.Clasa (id),
 
-    constraint ClasaObiect_FK_obiect
-    foreign key (obiect_id)
-    references Scoala.Obiect (id)
-);
+--     constraint ClasaObiect_FK_obiect
+--     foreign key (obiect_id)
+--     references Scoala.Obiect (id)
+-- );
 
 -- Tabelul acesta va fi cel mai incarcat din toate tabelele.
 create table Scoala.Nota(
