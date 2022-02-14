@@ -1,3 +1,4 @@
+module generate_data;
 
 import std.stdio;
 import std.array;
@@ -126,6 +127,24 @@ enum Lorem = UsePool("Lorem");
 enum Subjects = UsePool("Subject");
 
 
+import std.meta;
+import std.traits;
+
+template ValidTypes(Modules...)
+{
+    alias result = AliasSeq!();
+    static foreach (Module; Modules)
+    {
+        static foreach (typeName; __traits(allMembers, Module))
+        {
+            static if (hasUDA!(__traits(getMember, Module, typeName), GenerateCount))
+            {
+                result = AliasSeq!(result, __traits(getMember, Module, typeName));
+            }
+        }
+    }
+    alias ValidTypes = result;
+}
 
 
 void main()
@@ -137,22 +156,7 @@ void main()
         "Subject": readTxtNonEmpty("../data/subjects.txt"),
         "PositionName": readTxtNonEmpty("../data/job_names.txt"),
     ];
-
-    import std.meta;
-    import std.traits;
-
-    alias Types = AliasSeq!(
-        Student,
-        Angajat,
-        Functie,
-        AngajatFunctie,
-        AngajatCualificatieInfo,
-        Obiect,
-        Clasa,
-        ProfesorObiectClasa,
-        ClasaStudent,
-        Nota);
-
+    alias Types = ValidTypes!(generate_data);
 
     template Data(Type)
     {
@@ -427,7 +431,7 @@ struct Functie
 
 
 @GenerateCount(75)
-@(ForeignKey!(Functie, FKFlags.allowMultiple))
+@(ForeignKey!(Functie))
 struct AngajatFunctie
 {
     @DateRange(Date(2000, 1, 2), Date(2004, 1, 1))
@@ -478,9 +482,9 @@ struct Clasa
 }
 
 @GenerateCount(250)
-@(ForeignKey!(Angajat, FKFlags.allowMultiple))
-@(ForeignKey!(Obiect, FKFlags.allowMultiple))
-@(ForeignKey!(Clasa, FKFlags.exhaustAllReferences|FKFlags.allowMultiple))
+@(ForeignKey!(Angajat))
+@(ForeignKey!(Obiect))
+@(ForeignKey!(Clasa, FKFlags.exhaustAllReferences))
 struct ProfesorObiectClasa
 {
 }
@@ -488,8 +492,8 @@ struct ProfesorObiectClasa
 
 // It will be a bit wrong, but who cares
 @GenerateCount(250)
-@(ForeignKey!(Clasa, FKFlags.exhaustAllReferences|FKFlags.allowMultiple))
-@(ForeignKey!(Student, FKFlags.allowMultiple|FKFlags.exhaustAllReferences))
+@(ForeignKey!(Clasa, FKFlags.exhaustAllReferences))
+@(ForeignKey!(Student, FKFlags.exhaustAllReferences))
 struct ClasaStudent
 {
 
@@ -497,9 +501,9 @@ struct ClasaStudent
 
 
 @GenerateCount(15000)
-@(ForeignKey!(Student, FKFlags.allowMultiple|FKFlags.exhaustAllReferences))
-@(ForeignKey!(Obiect, FKFlags.allowMultiple|FKFlags.exhaustAllReferences))
-@(ForeignKey!(Clasa, FKFlags.allowMultiple|FKFlags.exhaustAllReferences))
+@(ForeignKey!(Student, FKFlags.exhaustAllReferences))
+@(ForeignKey!(Obiect, FKFlags.exhaustAllReferences))
+@(ForeignKey!(Clasa, FKFlags.exhaustAllReferences))
 struct Nota
 {
     @(Range!ubyte(0, 75))
