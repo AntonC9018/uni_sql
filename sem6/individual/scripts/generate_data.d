@@ -108,8 +108,8 @@ string[] readTxtNonEmpty(string filename)
     import std.string : strip;
     return File(filename)
         .byLineCopy()
-        .filter!(a => a != "")
         .map!(a => strip(a))
+        .filter!(a => a != "")
         .array;
 }
 
