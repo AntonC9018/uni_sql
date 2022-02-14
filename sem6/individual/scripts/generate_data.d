@@ -292,10 +292,6 @@ void main()
     auto b = appender!string;
     static foreach (Type; Types)
     {
-        static if (is(Type == ProfesorObiectClasa))
-        {
-            writeln(FKArrays!Type.length);
-        }
         foreach (index; 0 .. Data!Type.count)
         {{
             b ~= "insert into " ~ schemaName ~ "." ~ Type.stringof ~ "(\n";
@@ -383,7 +379,7 @@ void main()
     }
 
     string outputFileName = "add_things.sql";
-    auto file = File(outputFileName, "w+");
+    auto file = File(outputFileName, "w");
     file.write(b[]);
     file.flush();
     file.close();
