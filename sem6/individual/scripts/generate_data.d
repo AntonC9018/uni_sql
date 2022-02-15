@@ -333,7 +333,11 @@ void main()
 
         foreach (index; 0 .. Data!Type.count)
         {{
-            if (index % 1000 == 0)
+            // The max number of `values` that can be inserted at once.
+            // It is hardcoded in MSSQL, trying to go above will error out.
+            enum hardcodedBatchSizeLimit = 1000;
+
+            if (index % hardcodedBatchSizeLimit == 0)
                 writeStart();
 
             void appendT(T)(T value)
@@ -437,7 +441,8 @@ void main()
             }
 
             b ~= ")";
-            if (index % 1000 < 999 && index != Data!Type.count - 1)
+            if (index % hardcodedBatchSizeLimit < hardcodedBatchSizeLimit - 1
+                && index != Data!Type.count - 1)
                 b ~= ",";
             b ~= "\n";
         }}
@@ -553,7 +558,7 @@ struct ProfesorObiectClasa
 
 
 // It will be a bit wrong, but who cares
-@GenerateCount(251)
+@GenerateCount(10067)
 @(ForeignKey!(Clasa, FKFlags.exhaustAllReferences))
 @(ForeignKey!(Student, FKFlags.exhaustAllReferences))
 struct ClasaStudent
@@ -574,3 +579,7 @@ struct Nota
     @(Range!ubyte(0, 9))
     ubyte valoarea;
 }
+
+// 1    1
+// 1501 1501
+// 1502 1
